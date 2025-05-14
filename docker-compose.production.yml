@@ -29,8 +29,12 @@ services:
     image: postgres:14
     container_name: media-bot-postgres
     restart: always
-    env_file:
-      - .env
+    # env_file:
+      # - .env
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 49yLujm8Tihy
+      POSTGRES_DB: database
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     ulimits:
       core:
