@@ -1,0 +1,1 @@
+DELETE FROM "broadcast" WHERE "id" = %(broadcast_id)s;

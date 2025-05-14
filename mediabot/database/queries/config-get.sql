@@ -1,0 +1,1 @@
+SELECT "value" FROM "config" WHERE "config" = %(config)s LIMIT 1;

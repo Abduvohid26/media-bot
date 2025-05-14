@@ -1,0 +1,1 @@
+UPDATE "instance" SET {0}={0}+1 WHERE "id" = %(instance_origin)s;

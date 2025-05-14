@@ -1,0 +1,1 @@
+SELECT "pid", "client_addr", "query_start", "state", "query" FROM "pg_stat_activity" WHERE "query" != '';

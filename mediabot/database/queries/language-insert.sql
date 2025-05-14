@@ -1,0 +1,1 @@
+INSERT INTO "language" ("code", "name", "instance_origin") VALUES (%(code)s, %(name)s, %(instance_origin)s);

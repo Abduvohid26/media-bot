@@ -1,0 +1,1 @@
+DELETE FROM "language" WHERE "id" = %(language_id)s;

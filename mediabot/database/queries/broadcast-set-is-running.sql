@@ -1,0 +1,1 @@
+UPDATE "broadcast" SET "is_running" = %(is_running)s WHERE "id" = %(broadcast_id)s;

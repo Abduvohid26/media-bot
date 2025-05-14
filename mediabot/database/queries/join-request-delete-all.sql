@@ -1,0 +1,1 @@
+DELETE FROM "join_request" WHERE "join_request_chat_origin" = %(join_request_chat_origin)s;

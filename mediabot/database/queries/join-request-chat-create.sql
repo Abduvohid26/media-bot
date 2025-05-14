@@ -1,0 +1,1 @@
+INSERT INTO "join_request_chat" ("chat", "instance_origin") VALUES (%(chat)s, %(instance_origin)s) RETURNING "id";

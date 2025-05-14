@@ -1,0 +1,1 @@
+SELECT "id", "code", "name" FROM "language" WHERE "instance_origin" = %(instance_origin)s;

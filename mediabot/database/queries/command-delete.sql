@@ -1,0 +1,1 @@
+DELETE FROM "command" WHERE "id" = %(command_id)s AND "instance_origin" = %(instance_origin)s;

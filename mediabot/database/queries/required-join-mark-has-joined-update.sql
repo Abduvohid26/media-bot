@@ -1,0 +1,1 @@
+UPDATE "required_join_mark" SET "has_joined" = %(has_joined)s WHERE "required_join_origin" = %(required_join_origin)s AND "account_origin" = %(account_origin)s;

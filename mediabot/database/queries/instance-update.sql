@@ -1,0 +1,1 @@
+UPDATE "instance" SET {} WHERE "id" = {instance_id};

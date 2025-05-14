@@ -1,0 +1,23 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: mediabot\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "language.change_text"
+msgstr "Iltimos, tilni tanlang:"
+
+msgid "request.processing_text"
+msgstr "Sizning so'rovingiz bajarilmoqda..."
+
+msgid "request.failed_text"
+msgstr "So'rovni bajarib bo'lmadi."
+
+msgid "request.file_is_too_big_text"
+msgstr "Fayl juda katta."
+
+msgid "required_join.default_text"
+msgstr "Iltimos, davom ettirish uchun quyidagi kanal/guruhga a'zo bo'ling:"
+
+msgid "required_join.default_button_text"
+msgstr "A'zo bo'lish"

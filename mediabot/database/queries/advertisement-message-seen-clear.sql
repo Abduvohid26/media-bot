@@ -1,0 +1,1 @@
+DELETE FROM "message_seen" WHERE "message_origin" in (SELECT "id" from "message" WHERE "advertisement_origin" = %(advertisement_origin)s)

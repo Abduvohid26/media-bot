@@ -1,0 +1,1 @@
+INSERT INTO "referral_click" (referral_origin, account_origin, instance_origin) VALUES (%(referral_origin)s, %(account_origin)s, %(instance_origin)s) ON CONFLICT DO NOTHING;

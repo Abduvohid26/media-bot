@@ -1,0 +1,1 @@
+DELETE FROM "advertisement" WHERE "id" = %(advertisement_id)s;

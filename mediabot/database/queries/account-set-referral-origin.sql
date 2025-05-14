@@ -1,0 +1,1 @@
+UPDATE "account" SET "referral_origin" = %(referral_origin)s WHERE "instance_origin" = %(instance_origin)s AND "id" = %(account_id)s;

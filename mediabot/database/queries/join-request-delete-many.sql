@@ -1,0 +1,1 @@
+DELETE FROM "join_request" WHERE "id" IN (SELECT UNNEST(ARRAY[{}]));

@@ -1,0 +1,1 @@
+UPDATE "account" SET "language_origin" = (COALESCE((SELECT "id" FROM "language" WHERE "code" = %(language_code)s), (SELECT "id" FROM "language" LIMIT 1))) WHERE "instance_origin" = %(instance_origin)s AND "id" = %(account_id)s;

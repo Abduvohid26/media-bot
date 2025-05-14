@@ -1,0 +1,150 @@
+services:
+  media-bot:
+    container_name: media-bot
+    restart: always
+    build: .
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    command: >
+        bash -c "alembic upgrade head && gunicorn --worker-class aiohttp.GunicornWebWorker --bind 0.0.0.0:80 --graceful-timeout 5 --worker-tmp-dir /tmp --threads 1024 mediabot.main:http_server"
+    volumes:
+      - ./config/production/alembic.ini:/home/alembic.ini
+      - ./:/home
+      - ./.data/telegram-bot-api:/tmp/telegram-bot-api
+    ulimits:
+      core:
+        soft: -1
+        hard: -1
+    networks:
+      - default
+    logging:
+      options:
+        max-size: 32mb
+    user: root
+
+  postgres:
+    image: postgres:14
+    container_name: media-bot-postgres
+    restart: always
+    env_file:
+      - .env
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    ulimits:
+      core:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./.data/postgres:/var/lib/postgresql/data
+      - ./config/production/initial.sql:/docker-entrypoint-initdb.d/initial.sql
+      - ./config/production/postgresql.conf:/etc/postgresql/postgresql.conf
+    networks:
+      - default
+    logging:
+      options:
+        max-size: 32mb
+    user: root
+
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: media-bot-pgadmin
+    restart: always
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    volumes:
+      - ./.data/pgadmin:/var/lib/pgadmin
+    logging:
+      options:
+        max-size: 32mb
+    user: root
+    networks:
+      - default
+
+  redis:
+    image: redis:latest
+    container_name: media-bot-redis
+    restart: always
+    volumes:
+      - ./.data/redis:/data
+    logging:
+      options:
+        max-size: 32mb
+    user: root
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: media-bot-grafana
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./config/production/grafana.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./.data/grafana:/var/lib/grafana
+    networks:
+      - default
+    logging:
+      options:
+        max-size: 32mb
+    user: root
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: media-bot-loki
+    restart: always
+    env_file:
+      - .env
+    command: -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./config/production/loki.yaml:/etc/loki/loki.yaml
+      - ./.data/loki:/tmp/loki
+    networks:
+      - default
+    logging:
+      options:
+        max-size: 32mb
+    user: root
+    security_opt:
+      - seccomp:unconfined
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: media-bot-promtail
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./config/production/promtail.yaml:/etc/promtail/docker-config.yaml
+      - ./logs:/mediabot-logs/
+    command: -config.file=/etc/promtail/docker-config.yaml
+    depends_on:
+      - loki
+    networks:
+      - default
+    logging:
+      options:
+        max-size: 32mb
+    user: root
+
+  telegram-bot-api:
+    image: aiogram/telegram-bot-api:latest
+    env_file:
+      - .env
+    ulimits:
+      core:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./.data/telegram-bot-api:/var/lib/telegram-bot-api
+    ports:
+      - 9057:8082
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge

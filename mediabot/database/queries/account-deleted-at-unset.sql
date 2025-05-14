@@ -1,0 +1,1 @@
+UPDATE "account" SET "deleted_at" = NULL WHERE "id" = %(account_id)s;

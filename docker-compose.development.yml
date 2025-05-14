@@ -1,0 +1,186 @@
+services:
+  media-bot:
+    container_name: media-bot
+    restart: always
+    build: .
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    command: >
+        bash -c "alembic upgrade head && gunicorn --worker-class aiohttp.GunicornWebWorker --bind 0.0.0.0:80 --graceful-timeout 5 --worker-tmp-dir /tmp --reload mediabot.main:http_server"
+    volumes:
+      - ./:/home
+      - ./config/development/alembic.ini:/home/alembic.ini
+      - ./.data/telegram-bot-api:/tmp/telegram-bot-api
+    networks:
+      - default
+    ports:  
+      - "9050:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+      # driver: none
+
+  postgres:
+    image: postgres:14
+    container_name: media-bot-postgres
+    restart: always
+    env_file:
+      - .env
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    ulimits:
+      core:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./.data/postgres:/var/lib/postgresql/data
+      - ./config/development/initial.sql:/docker-entrypoint-initdb.d/initial.sql
+      - ./config/development/postgresql.conf:/etc/postgresql/postgresql.conf
+    ports:
+      - 9051:5432
+    networks:
+      - default
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+      # driver: none
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: media-bot-pgadmin
+    restart: always
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    ports:
+      - "9052:80"
+    volumes:
+      - ./.data/pgadmin:/var/lib/pgadmin
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+      # driver: none
+
+  redis:
+    image: redis:latest
+    container_name: media-bot-redis
+    restart: always
+    volumes:
+      - ./.data/redis:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+      # driver: none
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: media-bot-grafana
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - 9054:3000
+    volumes:
+      - ./config/development/grafana.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./.data/grafana:/var/lib/grafana
+    networks:
+      - default
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+      # driver: none
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: media-bot-loki
+    restart: always
+    env_file:
+      - .env
+    command: -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./config/development/loki.yaml:/etc/loki/loki.yaml
+      - ./.data/loki:/tmp/loki
+    networks:
+      - default
+    ports:
+      - 9055:3100
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+      # driver: none
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: media-bot-promtail
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./config/development/promtail.yaml:/etc/promtail/docker-config.yaml
+      - ./logs:/mediabot-logs/
+    command: -config.file=/etc/promtail/docker-config.yaml
+    depends_on:
+      - loki
+    networks:
+      - default
+    ulimits:
+      core:
+        soft: -1
+        hard: -1
+    ports:
+      - "9056:9080"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+      # driver: none
+
+  telegram-bot-api:
+    image: aiogram/telegram-bot-api:latest
+    env_file:
+      - .env
+    ulimits:
+      core:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./.data/telegram-bot-api:/var/lib/telegram-bot-api
+    ports:
+      - 9057:8082
+    networks:
+      - default
+
+  # backup:
+  #   image: mcuadros/ofelia:latest
+  #   container_name: media-bot-backup
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #   command: daemon --docker
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   labels:
+  #     ofelia.job-local.backup-job.schedule: "@every 5s"
+  #     ofelia.job-local.backup-job.command: "date"
+
+networks:
+  default:
+    driver: bridge

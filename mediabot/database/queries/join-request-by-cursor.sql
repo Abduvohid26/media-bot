@@ -1,0 +1,1 @@
+SELECT "id", "user_id" FROM "join_request" WHERE "join_request_chat_origin" = %(join_request_chat_origin)s AND "id" > %(cursor)s ORDER BY "id" LIMIT %(limit)s;

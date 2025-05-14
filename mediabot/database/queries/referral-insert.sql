@@ -1,0 +1,1 @@
+INSERT INTO "referral" (code, instance_origin) VALUES (%(code)s, %(instance_origin)s);

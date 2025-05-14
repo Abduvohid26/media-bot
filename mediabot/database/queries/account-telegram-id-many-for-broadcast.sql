@@ -1,0 +1,1 @@
+SELECT "id", "telegram_id" FROM "account" WHERE "instance_origin" = %(instance_origin)s AND "id" > %(cursor)s and COALESCE("language_origin" = %(language_origin)s, TRUE) AND "deleted_at" IS NULL ORDER BY "id" LIMIT %(limit)s;

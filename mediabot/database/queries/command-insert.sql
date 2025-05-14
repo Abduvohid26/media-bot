@@ -1,0 +1,1 @@
+INSERT INTO "command" ("command", "instance_origin") VALUES (%(command)s, %(instance_origin)s) RETURNING "id";

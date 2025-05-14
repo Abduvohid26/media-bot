@@ -1,0 +1,1 @@
+UPDATE "referral" SET "code" = %(referral_code)s WHERE "id" = %(referral_id)s;

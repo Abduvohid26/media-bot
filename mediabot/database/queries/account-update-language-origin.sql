@@ -1,0 +1,1 @@
+UPDATE "account" SET "language_origin" = %(language_origin)s WHERE "id" = %(account_id)s;

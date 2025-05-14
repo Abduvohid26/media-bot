@@ -1,0 +1,1 @@
+INSERT INTO "group" (group_id, instance_origin) VALUES (%(group_id)s, %(instance_origin)s) ON CONFLICT DO NOTHING RETURNING "id";

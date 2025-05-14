@@ -1,0 +1,1 @@
+SELECT "telegram_id" FROM "account" WHERE "instance_origin" = %(instance_origin)s AND "is_admin" IS TRUE;

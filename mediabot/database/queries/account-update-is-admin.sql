@@ -1,0 +1,1 @@
+UPDATE "account" SET "is_admin" = %(is_admin)s WHERE "instance_origin" = %(instance_origin)s AND "telegram_id" = %(telegram_id)s;

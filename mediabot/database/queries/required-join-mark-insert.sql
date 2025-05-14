@@ -1,0 +1,1 @@
+INSERT INTO "required_join_mark" ("required_join_origin", "account_origin", "instance_origin", "has_joined") VALUES (%(required_join_origin)s, %(account_origin)s, %(instance_origin)s, %(has_joined)s);

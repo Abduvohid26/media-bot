@@ -1,0 +1,1 @@
+DELETE FROM "referral" WHERE "id" = %(referral_id)s;

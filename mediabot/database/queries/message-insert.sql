@@ -1,0 +1,1 @@
+INSERT INTO "message" ("message", "instance_origin", "command_origin", "required_join_origin", "join_request_chat_origin", "advertisement_origin") VALUES (%(message)s, %(instance_origin)s, %(command_origin)s, %(required_join_origin)s, %(join_request_chat_origin)s, %(advertisement_origin)s);

@@ -1,0 +1,1 @@
+GROUP_FEATURE_ENABLED = object()

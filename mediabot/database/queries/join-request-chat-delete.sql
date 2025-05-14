@@ -1,0 +1,1 @@
+DELETE FROM "join_request_chat" WHERE "id" = %(join_request_chat_id)s;
