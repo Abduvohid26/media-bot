@@ -20,6 +20,8 @@ services:
         hard: -1
     networks:
       - default
+    ports:  
+      - "9050:80"
     logging:
       options:
         max-size: 32mb
