@@ -261,7 +261,7 @@ class Instance:
     query = sql.SQL(instance_quota_used_increment_sql).format(sql.SQL(field))
     async with acquire_connection() as conn:
       await conn.execute(query, params)
-
+  
   @staticmethod
   async def increment_track_used(instance_origin: int) -> None:
     await Instance.increment_used(instance_origin, "track_used")

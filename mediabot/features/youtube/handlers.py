@@ -77,7 +77,7 @@ async def _youtube_link(context: Context, chat_id: int, user_id: int, link: str)
   try:
     video_id_matches = re.findall(r"(youtu.*be.*)\/(watch\?v=|embed\/|v|shorts|)(.*?((?=[&#?])|$))", link)
     video_id = video_id_matches[0][2]
-
+    print(video_id, "VIDEO ID")
     if "shorts" in link:
       await _youtube_video_download(context, chat_id, user_id, video_id, recognize=True)
     else:
@@ -111,9 +111,10 @@ async def _youtube_video_download(context: Context, chat_id: int, user_id: int, 
 
   try:
     file_id = await YouTube.get_youtube_cache_file_id(context.instance.id, id, False)
-
+    print(file_id, "FILE ID")
     if not file_id:
       (file_id, recognize_result,) = await YouTube.download_telegram(id, context.instance.token, recognize=recognize)
+      print(file_id, "FILE ID1", recognize_result)
 
     sent_message = await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=file_id)
 
@@ -132,6 +133,7 @@ async def _youtube_video_download(context: Context, chat_id: int, user_id: int, 
       stack_trace=traceback.format_exc()
     ))
   finally:
+    print(traceback.format_exc())
     await processing_message.delete()
 
 async def youtube_handle_preview_callback_query(update: Update, context: Context):
@@ -151,20 +153,23 @@ async def youtube_handle_link_message(update: Update, context: Context) -> None:
 
 # @check_pending_request(YouTubeVideoDownloadRequest)
 async def youtube_handle_video_download_callback_query(update: Update, context: Context):
+  print("salom")
   assert update.callback_query and update.effective_chat.id and update.effective_user.id
 
   await update.callback_query.answer()
 
   id = context.matches[0].group(1)
-
+  
   await _youtube_video_download(context, update.effective_chat.id, update.effective_user.id, id)
 
 async def youtube_handle_video_download_chat_member(update: Update, context: Context, id: str):
+  print("salom2")
   assert update.chat_member
 
   await _youtube_video_download(context, update.effective_chat.id, update.effective_user.id, id)
 
 async def youtube_handle_search_message(update: Update, context: Context):
+  print("salom3")
   assert update.message and update.effective_chat and update.effective_user and context.user_data is not None \
       and update.effective_message and update.effective_message.text
 
@@ -187,4 +192,5 @@ async def youtube_handle_search_message(update: Update, context: Context):
   context.user_data[YOUTUBE_SEARCH_QUERY_CONTEXT] = update.effective_message.text
 
 async def youtube_handle_search_chat_member(update: Update, context: Context):
+  print("salom4")
   assert update.chat_member
