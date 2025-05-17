@@ -85,73 +85,73 @@ services:
         max-file: "3"
       # driver: none
 
-  grafana:
-    image: grafana/grafana:11.0.0
-    container_name: media-bot-grafana
-    restart: always
-    env_file:
-      - .env
-    ports:
-      - 9054:3000
-    volumes:
-      - ./config/development/grafana.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
-      - ./.data/grafana:/var/lib/grafana
-    networks:
-      - default
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-      # driver: none
-
-  loki:
-    image: grafana/loki:3.0.0
-    container_name: media-bot-loki
-    restart: always
-    env_file:
-      - .env
-    command: -config.file=/etc/loki/loki.yaml
-    volumes:
-      - ./config/development/loki.yaml:/etc/loki/loki.yaml
-      - ./.data/loki:/tmp/loki
-    networks:
-      - default
-    ports:
-      - 9055:3100
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-      # driver: none
-
-  promtail:
-    image: grafana/promtail:3.0.0
-    container_name: media-bot-promtail
-    restart: always
-    env_file:
-      - .env
-    volumes:
-      - ./config/development/promtail.yaml:/etc/promtail/docker-config.yaml
-      - ./logs:/mediabot-logs/
-    command: -config.file=/etc/promtail/docker-config.yaml
-    depends_on:
-      - loki
-    networks:
-      - default
-    ulimits:
-      core:
-        soft: -1
-        hard: -1
-    ports:
-      - "9056:9080"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-      # driver: none
+#  grafana:
+#    image: grafana/grafana:11.0.0
+#    container_name: media-bot-grafana
+#    restart: always
+#    env_file:
+#      - .env
+#    ports:
+#      - 9054:3000
+#    volumes:
+#      - ./config/development/grafana.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+#      - ./.data/grafana:/var/lib/grafana
+#    networks:
+#      - default
+#    logging:
+#      driver: "json-file"
+#      options:
+#        max-size: "10m"
+#        max-file: "3"
+#      # driver: none
+#
+#  loki:
+#    image: grafana/loki:3.0.0
+#    container_name: media-bot-loki
+#    restart: always
+#    env_file:
+#      - .env
+#    command: -config.file=/etc/loki/loki.yaml
+#    volumes:
+#      - ./config/development/loki.yaml:/etc/loki/loki.yaml
+#      - ./.data/loki:/tmp/loki
+#    networks:
+#      - default
+#    ports:
+#      - 9055:3100
+#    logging:
+#      driver: "json-file"
+#      options:
+#        max-size: "10m"
+#        max-file: "3"
+#      # driver: none
+#
+#  promtail:
+#    image: grafana/promtail:3.0.0
+#    container_name: media-bot-promtail
+#    restart: always
+#    env_file:
+#      - .env
+#    volumes:
+#      - ./config/development/promtail.yaml:/etc/promtail/docker-config.yaml
+#      - ./logs:/mediabot-logs/
+#    command: -config.file=/etc/promtail/docker-config.yaml
+#    depends_on:
+#      - loki
+#    networks:
+#      - default
+#    ulimits:
+#      core:
+#        soft: -1
+#        hard: -1
+#    ports:
+#      - "9056:9080"
+#    logging:
+#      driver: "json-file"
+#      options:
+#        max-size: "10m"
+#        max-file: "3"
+#      # driver: none
 
   telegram-bot-api:
     image: aiogram/telegram-bot-api:latest

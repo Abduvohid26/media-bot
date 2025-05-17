@@ -1,5 +1,5 @@
-from telegram.ext import filters, MessageHandler, CallbackQueryHandler
-from mediabot.application import Application
+from telegram.ext import filters, Application, MessageHandler, CallbackQueryHandler
+
 from mediabot.features.youtube.handlers import youtube_handle_link_message, youtube_handle_preview_callback_query, \
     youtube_handle_search_message, youtube_handle_video_download_callback_query
 
