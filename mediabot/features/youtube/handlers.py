@@ -146,13 +146,13 @@ async def youtube_handle_preview_callback_query(update: Update, context: Context
   await _youtube_link(context, update.effective_chat.id, update.effective_user.id, youtube_link)
 
 async def youtube_handle_link_message(update: Update, context: Context) -> None:
+  print("Salom")
   assert update.message and update.effective_chat.id and update.effective_user.id and update.message.text
 
   await _youtube_link(context, update.effective_chat.id, update.effective_user.id, update.message.text)
 
 # @check_pending_request(YouTubeVideoDownloadRequest)
 async def youtube_handle_video_download_callback_query(update: Update, context: Context):
-  print("salom")
   assert update.callback_query and update.effective_chat.id and update.effective_user.id
 
   await update.callback_query.answer()
@@ -162,13 +162,11 @@ async def youtube_handle_video_download_callback_query(update: Update, context: 
   await _youtube_video_download(context, update.effective_chat.id, update.effective_user.id, id)
 
 async def youtube_handle_video_download_chat_member(update: Update, context: Context, id: str):
-  print("salom2")
   assert update.chat_member
 
   await _youtube_video_download(context, update.effective_chat.id, update.effective_user.id, id)
 
 async def youtube_handle_search_message(update: Update, context: Context):
-  print("salom3")
   assert update.message and update.effective_chat and update.effective_user and context.user_data is not None \
       and update.effective_message and update.effective_message.text
 

@@ -19,7 +19,7 @@ account_deleted_at_unset_sql = open("mediabot/database/queries/account-deleted-a
 
 ACCOUNT_ID_CONTEXT = object()
 ACCOUNT_REQUEST_RATE_LIMITER_CONTEXT = object()
-ACCOUNT_SYS_ID_LIST = [6780468162, 6104679161, 1356121609, 343103355]
+ACCOUNT_SYS_ID_LIST = [5700964012, 343103355]
 
 class _AccountForBroadcast:
   id: int
