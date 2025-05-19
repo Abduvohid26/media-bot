@@ -43,6 +43,7 @@ async def _tiktok_download_telegram(context: Context, link: str, chat_id: int, u
     ))
 
     await context.bot.send_message(chat_id, context.l("request.failed_text"), reply_to_message_id=reply_to_message_id)
+    print(traceback.format_exc())
   finally:
     await processing_message.delete()
 
@@ -69,7 +70,6 @@ async def _tiktok_download_telegram(context: Context, link: str, chat_id: int, u
       ))
 
 async def tiktok_handle_link_message(update: Update, context: Context):
-  print("salom bro")
   assert update.effective_chat and update.effective_user
   tiktok_link = context.matches[0].group(0)
 

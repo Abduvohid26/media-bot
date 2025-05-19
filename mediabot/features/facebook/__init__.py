@@ -9,3 +9,6 @@ class FacebookFeature:
   def register_handlers(botapp: Application):
     botapp.add_handler(FacebookFeature.facebook_link_message_handler)
     botapp.add_handler(FacebookFeature.facebook_download_callback_query_handler)
+
+
+  

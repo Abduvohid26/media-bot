@@ -89,6 +89,8 @@ services:
     volumes:
       - ./config/production/grafana.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - ./.data/grafana:/var/lib/grafana
+    ports:
+     - 9054:3000
     networks:
       - default
     logging:
@@ -145,7 +147,7 @@ services:
     volumes:
       - ./.data/telegram-bot-api:/var/lib/telegram-bot-api
     ports:
-      - 9057:8082
+      - 8081:8081
     networks:
       - default
 
