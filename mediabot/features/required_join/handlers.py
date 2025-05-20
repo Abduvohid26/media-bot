@@ -26,11 +26,9 @@ async def _check_required_join(context: Context, required_join_id: int) -> bool:
 
   if not required_join:
     return False
-
   # if the required join reached its target count, disable it and notify the admins
   if required_join.target_join_count and required_join.required_join_mark_has_joined_count >= required_join.target_join_count:
     await RequiredJoin.update_is_enabled(required_join_id, False)
-
     instance_admin_telegram_id_all = (await Account.get_admin_id_all(context.instance.id)) + ACCOUNT_SYS_ID_LIST
     reply_markup = InlineKeyboardMarkup([[
       InlineKeyboardButton("Show", callback_data=f"required_join_{required_join_id}")
@@ -156,7 +154,6 @@ async def required_join_is_member(bot: Bot, account_telegram_id: int, required_j
 async def required_join_handle(context: Context, chat_id: int, account_telegram_id: int, kind: RequiredJoinKind) -> None:
   account_language_origin = context.account.language.id if context.account.language else None
   required_joins = await RequiredJoin.get_all_for(context.instance.id, context.account.id, account_language_origin, kind)
-
   required_join_messages: list[dict] = []
   required_join_buttons: list[InlineKeyboardButton] = []
 
@@ -186,7 +183,6 @@ async def required_join_handle(context: Context, chat_id: int, account_telegram_
     # if the has_joined is already set to true by chat member handler, go to the next one
     if is_target_chat_member and required_join.has_joined:
       continue
-
     # if the account is a member of the chat and the database has "has_joined" false, set it to true to synchronize
     if is_target_chat_member and not required_join.has_joined:
       await RequiredJoin.set_mark_has_joined(required_join.id, context.account.id, True)

@@ -18,7 +18,7 @@ from mediabot.utils import AsyncFileDownloader
 
 async def _instagram_handle_link(context: Context, link: str, chat_id: int, user_id: int, reply_to_message_id: int = None, use_cache: bool = True):
   processing_message = await context.bot.send_message(chat_id, context.l("request.processing_text"), reply_to_message_id=reply_to_message_id)
-
+  print("he1llo")
   link_info_id = ""
 
   try:
@@ -132,7 +132,7 @@ async def _instagram_handle_collection_item_download(context: Context, chat_id: 
 
 async def instagram_handle_link_message(update: Update, context: Context):
   assert update.effective_message and context.matches and update.effective_chat
-
+  print("hello")
   instagram_link = context.matches[0][0]
 
   await required_join_feature.required_join_handle(context, update.effective_chat.id, \
