@@ -2,7 +2,7 @@ from telegram.ext import filters, Application, MessageHandler, CallbackQueryHand
 
 from mediabot.features.facebook.handlers import (
     facebook_handle_link_message,
-    facebook_handle_download_callback_query
+    facebook_handle_collection_item_download_callback_query
 )
 
 class FacebookFeature:
@@ -11,12 +11,11 @@ class FacebookFeature:
         facebook_handle_link_message
     )
 
-    facebook_download_callback_query_handler = CallbackQueryHandler(
-        facebook_handle_download_callback_query,
-        pattern="^facebook_download_([0-9]+)_(.+)$"
-    )
+    instagram_collection_item_callback_query_handler = CallbackQueryHandler(facebook_handle_collection_item_download_callback_query, "^facebook_download_([a-zA-Z0-9]+)_([0-9]+)$")
+
+
 
     @staticmethod
     def register_handlers(botapp: Application):
         botapp.add_handler(FacebookFeature.facebook_link_message_handler)
-        botapp.add_handler(FacebookFeature.facebook_download_callback_query_handler)
+        botapp.add_handler(FacebookFeature.instagram_collection_item_callback_query_handler)

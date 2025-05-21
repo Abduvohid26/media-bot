@@ -18,7 +18,6 @@ from mediabot.utils import AsyncFileDownloader
 
 async def _instagram_handle_link(context: Context, link: str, chat_id: int, user_id: int, reply_to_message_id: int = None, use_cache: bool = True):
   processing_message = await context.bot.send_message(chat_id, context.l("request.processing_text"), reply_to_message_id=reply_to_message_id)
-  print("he1llo")
   link_info_id = ""
 
   try:
