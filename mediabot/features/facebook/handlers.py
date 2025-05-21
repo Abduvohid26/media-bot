@@ -44,9 +44,7 @@ async def _facebook_handle_link(context: Context, link: str, chat_id: int, user_
 
   if facebook_post["type"] == "collection":
     await processing_message.delete()
-
     reply_markup = FacebookCollectionKeyboardMarkup.build(facebook_post["collection"], link_info_id)
-
     # send the first collection item thumbnail to preview
     await context.bot.send_photo(chat_id, facebook_post["collection"][0]["thumbnail_url"], reply_markup=reply_markup, reply_to_message_id=reply_to_message_id)
   else:
@@ -55,7 +53,7 @@ async def _facebook_handle_link(context: Context, link: str, chat_id: int, user_
 
       if facebook_post["type"] == "video":
         await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=facebook_post["download_url"], thumbnail=facebook_post["thumbnail_url"], supports_streaming=True)
-      elif facebook_post["type"] == "photo":
+      elif facebook_post["type"] == "image":
         await advertisement_message_send(context, chat_id, Advertisement.KIND_PHOTO, photo=facebook_post["download_url"])
     except:
       await context.bot.send_message(chat_id, context.l("request.failed_text"), reply_to_message_id=reply_to_message_id)
@@ -106,6 +104,7 @@ async def _facebook_handle_collection_item_download(context: Context, chat_id: i
   processing_message = await context.bot.send_message(chat_id, context.l("request.processing_text"))
 
   info = await MediaService.get_link_info(info_id)
+  print(info, "INFO")
   # downloaded_file_path = ""
 
   try:
@@ -115,7 +114,7 @@ async def _facebook_handle_collection_item_download(context: Context, chat_id: i
     # with open(downloaded_file_path, "rb") as fd:
     if collection_item["type"] == "video":
       await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=collection_item["download_url"])
-    elif collection_item["type"] == "photo":
+    elif collection_item["type"] == "image":
       await advertisement_message_send(context, chat_id, Advertisement.KIND_PHOTO, photo=collection_item["download_url"])
   except Exception as ex:
     await context.bot.send_message(chat_id, context.l("request.failed_text"))
@@ -144,21 +143,26 @@ async def facebook_handle_link_message(update: Update, context: Context):
   await _facebook_handle_link(context, instagram_link, update.effective_chat.id, update.effective_chat.id)
 
 async def facebook_handle_collection_item_download_callback_query(update: Update, context: Context):
-  print("salom")
-  assert update.callback_query and context.matches and update.effective_chat
+    assert update.callback_query and context.matches and update.effective_chat
 
-  await update.callback_query.answer()
+    await update.callback_query.answer()
 
-  info_id = str(context.matches[0].groups(0)[0])
-  index = int(context.matches[0].groups(0)[1])
+    info_id, index = context.matches[0].groups()
+    index = int(index)
+    await required_join_feature.required_join_handle(
+        context, update.effective_chat.id, update.effective_user.id,
+        required_join_feature.RequiredJoinKind.MEDIA_DOWNLOAD
+    )
 
-  await required_join_feature.required_join_handle(context, update.effective_chat.id, \
-    update.effective_user.id, required_join_feature.RequiredJoinKind.MEDIA_DOWNLOAD)
+    if (context.instance.instagram_quota != -1) and context.instance.instagram_quota <= context.instance.instagram_used:
+        raise InstanceQuotaLimitReachedException()
 
-  if (context.instance.instagram_quota != -1) and context.instance.instagram_quota <= context.instance.instagram_used:
-    raise InstanceQuotaLimitReachedException()
+    await _facebook_handle_collection_item_download(
+        context, update.effective_chat.id, update.effective_user.id,
+        info_id, index
+    )
 
-  await _facebook_handle_collection_item_download(context, update.effective_chat.id, update.effective_user.id, info_id, index)
+  
 
 async def facebook_handle_link_chat_member(update: Update, context: Context, instagram_link: str):
   assert update.chat_member
