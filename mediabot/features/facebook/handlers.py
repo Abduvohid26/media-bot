@@ -104,7 +104,6 @@ async def _facebook_handle_collection_item_download(context: Context, chat_id: i
   processing_message = await context.bot.send_message(chat_id, context.l("request.processing_text"))
 
   info = await MediaService.get_link_info(info_id)
-  print(info, "INFO")
   # downloaded_file_path = ""
 
   try:
