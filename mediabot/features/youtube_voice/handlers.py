@@ -28,6 +28,9 @@ recognizer = sr.Recognizer()
 async def voice_convert(update: Update, context: Context):
     assert update.message and update.message.voice
 
+    processing_message = await context.bot.send_message(update.effective_chat.id, \
+      context.l("request.processing_text"), reply_to_message_id=update.effective_message.id)
+
     if update.message.voice.file_size >= 31457280:
         await update.message.reply_text("❌ Fayl juda katta.")
         return
@@ -77,12 +80,13 @@ async def voice_convert(update: Update, context: Context):
         await update.message.reply_text("❌ Ovozdan matn olinmadi.")
 
     finally:
+        await processing_message.delete()
         Path(local_voice_file_path).unlink(missing_ok=True)
         temp_file_path.unlink(missing_ok=True)
         wav_path.unlink(missing_ok=True)
         print("[🧹] Vaqtinchalik fayllar o‘chirildi.")
     
 
-async def youtube_voice_handle_link_message(update: Update, context: Context) -> None:
-    print("✅ Voice xabar qabul qilindi")
+async def youtube_voice_handle_link_message(update: Update, context: Context) -> None:    
     await voice_convert(update, context)
+
