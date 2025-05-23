@@ -23,7 +23,6 @@ from mediabot.utils import get_local_path_of
 async def _track_search(context: Context, search_query: str, search_page: int, chat_id: int, user_id: int) -> typing.Tuple[str, InlineKeyboardMarkup]:
   try:
     search_results = await Track.search(search_query, search_page, TRACK_SEARCH_LIMIT)
-    print(search_results, "res")
     search_results_text = f"🔍 \"{search_query}\"\n\n"
 
     for [index, search_result] in enumerate(search_results):
@@ -152,6 +151,7 @@ async def track_handle_download_callback_query(update: Update, context: Context)
   await update.callback_query.answer()
 
   track_id = str(context.matches[0].groups(0)[0])
+  print(track_id, "ID")
 
   await required_join_feature.required_join_handle(context, update.effective_chat.id, \
     update.effective_user.id, RequiredJoinKind.MEDIA_DOWNLOAD)
