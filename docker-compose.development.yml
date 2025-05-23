@@ -13,7 +13,7 @@ services:
     volumes:
       - ./:/home
       - ./config/development/alembic.ini:/home/alembic.ini
-      - ./.data/telegram-bot-api:/tmp/telegzram-bot-api
+      - ./.data/telegram-bot-api:/tmp/telegram-bot-api
     networks:
       - default
     ports:  

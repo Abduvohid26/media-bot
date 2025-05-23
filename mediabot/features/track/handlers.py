@@ -23,7 +23,7 @@ from mediabot.utils import get_local_path_of
 async def _track_search(context: Context, search_query: str, search_page: int, chat_id: int, user_id: int) -> typing.Tuple[str, InlineKeyboardMarkup]:
   try:
     search_results = await Track.search(search_query, search_page, TRACK_SEARCH_LIMIT)
-
+    print(search_results, "res")
     search_results_text = f"🔍 \"{search_query}\"\n\n"
 
     for [index, search_result] in enumerate(search_results):
