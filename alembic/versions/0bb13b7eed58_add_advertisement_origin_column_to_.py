@@ -24,3 +24,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
   op.execute("ALTER TABLE message DROP COLUMN advertisement_origin;")
+  

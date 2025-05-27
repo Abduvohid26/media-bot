@@ -7,7 +7,7 @@ from mediabot.features.required_join.handlers import RequiredJoin, RequiredJoinK
 from mediabot.instance import Instance
 from mediabot.features.language.model import Language
 from mediabot.features.account.model import Account
-from mediabot.features.advertisement.model import Advertisement
+from mediabot.features.advertisement.model import Advertisement 
 from mediabot.cache import redis
 from mediabot.env import TELEGRAM_BOT_API_BASE_URL
 

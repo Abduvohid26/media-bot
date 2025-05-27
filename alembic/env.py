@@ -19,6 +19,7 @@ if config.config_file_name is not None:
 # from mediabot.models.language import Language
 # from mediabot.models.account import Account
 # from mediabot.features.command.model import Command
+# from mediabot.models. 
 
 class Base(DeclarativeBase):
   pass

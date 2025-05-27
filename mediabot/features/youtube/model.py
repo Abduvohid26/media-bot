@@ -9,13 +9,17 @@ YOUTUBE_DOWNLOAD_TELEGRAM_MAX_ATTEMPTS = 3
 class YouTube:
   @staticmethod
   async def search(search_query: str, offset: int, limit: int):
-    print("salom")
-    params = {"query": search_query, "offset": offset, "limit": limit}
+    try:
+      print("salom bro")
+      params = {"query": search_query, "offset": offset, "limit": limit}
 
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(12), raise_for_status=True) as http_session:
-      async with http_session.get(urljoin(MEDIA_SERVICE_BASE_URL, "/youtube-search"), params=params) as http_response:
-        search_result = await http_response.json()
-        return search_result["search_results"]
+      async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(12), raise_for_status=True) as http_session:
+        async with http_session.get(urljoin(MEDIA_SERVICE_BASE_URL, "/youtube-search"), params=params) as http_response:
+          search_result = await http_response.json()
+          print(search_result, "SRES")
+          return search_result["search_results"]
+    except Exception as ex:
+      print(ex, "xatolik")
 
   @staticmethod
   async def download_telegram(id: str, telegram_bot_token: str, recognize: bool = False, attempt: int = 1) -> str:

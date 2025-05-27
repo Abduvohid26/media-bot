@@ -76,7 +76,6 @@ async def _youtube_link(context: Context, chat_id: int, user_id: int, link: str)
   try:
     video_id_matches = re.findall(r"(youtu.*be.*)\/(watch\?v=|embed\/|v|shorts|)(.*?((?=[&#?])|$))", link)
     video_id = video_id_matches[0][2]
-    print(video_id, "VIDEO ID")
     if "shorts" in link:
       await _youtube_video_download(context, chat_id, user_id, video_id, recognize=True)
     else:
@@ -85,15 +84,32 @@ async def _youtube_link(context: Context, chat_id: int, user_id: int, link: str)
         InlineKeyboardButton("🎧 Audio", callback_data=f"track_download_{video_id}")
       ]])
 
-      await context.bot.send_photo(chat_id, f"https://i.ytimg.com/vi/{video_id}/sddefault.jpg", reply_markup=reply_markup)
+      thumbnails = [
+        "sddefault.jpg",
+        "hqdefault.jpg",
+        "mqdefault.jpg",
+        "default.jpg",
+      ]
 
+      for thumb in thumbnails:
+        url = f"https://i.ytimg.com/vi/{video_id}/{thumb}"
+        try:
+          await context.bot.send_photo(chat_id, url, reply_markup=reply_markup)
+          break
+        except Exception as e:
+          error_message = str(e)
+          if "Wrong type of the web page content" in error_message:
+            continue
+          else:
+            await context.bot.send_message(chat_id, f"❌ Xatolik yuz berdi: {error_message}")
+            break
     context.logger.info(None, extra=dict(
       action="YOUTUBE_LINK",
       chat_id=chat_id,
       user_id=user_id,
       link=link
     ))
-  except:
+  except Exception as e:
     await context.bot.send_message(chat_id, context.l("request.failed_text"))
 
     context.logger.error(None, extra=dict(
@@ -110,10 +126,8 @@ async def _youtube_video_download(context: Context, chat_id: int, user_id: int, 
 
   try:
     file_id = await YouTube.get_youtube_cache_file_id(context.instance.id, id, False)
-    print(file_id, "FILE ID")
     if not file_id:
       (file_id, recognize_result,) = await YouTube.download_telegram(id, context.instance.token, recognize=recognize)
-      print(file_id, "FILE ID1", recognize_result)
 
     sent_message = await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=file_id)
 
@@ -132,7 +146,6 @@ async def _youtube_video_download(context: Context, chat_id: int, user_id: int, 
       stack_trace=traceback.format_exc()
     ))
   finally:
-    print(traceback.format_exc())
     await processing_message.delete()
 
 async def youtube_handle_preview_callback_query(update: Update, context: Context):
@@ -146,7 +159,6 @@ async def youtube_handle_preview_callback_query(update: Update, context: Context
   await _youtube_link(context, update.effective_chat.id, update.effective_user.id, youtube_link)
 
 async def youtube_handle_link_message(update: Update, context: Context) -> None:
-  print("Salom")
   assert update.message and update.effective_chat.id and update.effective_user.id and update.message.text
 
   await _youtube_link(context, update.effective_chat.id, update.effective_user.id, update.message.text)
@@ -167,6 +179,7 @@ async def youtube_handle_video_download_chat_member(update: Update, context: Con
   await _youtube_video_download(context, update.effective_chat.id, update.effective_user.id, id)
 
 async def youtube_handle_search_message(update: Update, context: Context):
+  print("Qale")
   assert update.message and update.effective_chat and update.effective_user and context.user_data is not None \
       and update.effective_message and update.effective_message.text
 
@@ -178,7 +191,6 @@ async def youtube_handle_search_message(update: Update, context: Context):
 
   (search_results_text, inline_keyboard_markup, advertisement_after_messages) = await _youtube_search(context, update.effective_message.text, \
       0, update.effective_chat.id, update.effective_user.id)
-
   await update.message.reply_html(search_results_text, reply_markup=inline_keyboard_markup)
 
   for advertisement_after_message in advertisement_after_messages:
@@ -189,5 +201,4 @@ async def youtube_handle_search_message(update: Update, context: Context):
   context.user_data[YOUTUBE_SEARCH_QUERY_CONTEXT] = update.effective_message.text
 
 async def youtube_handle_search_chat_member(update: Update, context: Context):
-  print("salom4")
   assert update.chat_member

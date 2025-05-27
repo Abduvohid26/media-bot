@@ -58,5 +58,4 @@ class AsyncFileDownloader:
         with open(file_path_to_save_to, "wb") as fd:
           async for chunk in http_response.content.iter_chunked(download_chunk_size):
             fd.write(chunk)
-
     return file_path_to_save_to

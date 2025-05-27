@@ -4,9 +4,153 @@ from urllib.parse import urljoin
 from mediabot.env import MEDIA_SERVICE_BASE_URL
 from mediabot.cache import redis
 from yarl import URL
+from typing import List
+from datetime import datetime
+from mediabot.database.connection import acquire_connection
+from dataclasses import dataclass
 
 TRACK_SEARCH_QUERY_CONTEXT = object()
 TRACK_DOWNLOAD_TELEGRAM_MAX_ATTEMPTS = 3
+
+
+track_create_sql = open("mediabot/database/queries/track-create.sql").read()
+track_get_sql = open("mediabot/database/queries/track-get.sql").read()
+track_search_sql = open("mediabot/database/queries/track-search.sql").read()
+
+@dataclass
+class _Track_DB:
+    id: int
+    query: str
+    video_id: str
+    title: str
+    performer: str
+    duration: int
+    thumbnail_url: str
+    created_at: str
+
+
+class Track_DB:
+    @staticmethod
+    def deserialize(record: dict) -> _Track_DB:
+        return _Track_DB(
+            id=record["id"],
+            query=record["query"],
+            video_id=record["video_id"],
+            title=record["title"],
+            performer=record["performer"],
+            duration=record["duration"],
+            thumbnail_url=record["thumbnail_url"],
+            created_at=str(record["created_at"])
+        )
+    @staticmethod
+    async def create(query: str, video_id: str, title: str, performer: str, duration: int, thumbnail_url: str):
+        insert_sql = """
+        INSERT INTO tracks (query, video_id, title, performer, duration, thumbnail_url, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING id;
+        """
+        now = datetime.now()
+
+        async with acquire_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    insert_sql,
+                    (query, video_id, title, performer, duration, thumbnail_url, now)
+                )
+                row = await cursor.fetchone()
+                return row["id"] if row else None
+    @staticmethod
+    async def save_all(query: str, search_results: List[dict]):
+        insert_sql = """
+        INSERT INTO tracks (query, video_id, title, performer, duration, thumbnail_url, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+
+        now = datetime.now()
+        data = [
+            (
+                query,
+                item["id"],
+                item["title"],
+                item["performer"],
+                item["duration"],
+                item["thumbnail_url"],
+                now
+            )
+            for item in search_results
+        ]
+
+        async with acquire_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.executemany(insert_sql, data)
+   
+
+    @staticmethod
+    async def get_by_query(query: str, limit: int = 10) -> List[_Track_DB]:
+      parts = query.split()
+      # select_sql = f"""
+      #     SELECT id, query, video_id, title, performer, duration, thumbnail_url, created_at
+      #     FROM tracks
+      #     WHERE {" AND ".join(["query ILIKE %s" for _ in parts])}
+      #     ORDER BY created_at DESC
+      #     LIMIT %s;
+      # """
+
+      # params = [f"%{part}%" for part in parts] + [limit]
+      select_sql = """
+          SELECT video_id AS id, title, performer, duration, thumbnail_url
+          FROM tracks
+          WHERE similarity(query, %s::text) > 0.2
+          ORDER BY similarity(query, %s::text) DESC
+          LIMIT %s;
+      """
+      params = [query, query, limit]
+
+
+      async with acquire_connection() as conn:
+          async with conn.cursor() as cursor:
+              await cursor.execute(select_sql, params)
+              rows = await cursor.fetchall()
+              return rows
+    @staticmethod
+    async def get(track_id: int) -> _Track_DB | None:
+        select_sql = """
+        SELECT id, query, video_id, title, performer, duration, thumbnail_url, created_at
+        FROM tracks WHERE id = %s;
+        """
+
+        async with acquire_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(select_sql, (track_id,))
+                record = await cursor.fetchone()
+                return Track_DB.deserialize(record) if record else None
+
+    @staticmethod
+    async def search(query: str) -> List[_Track_DB]:
+        select_sql = """
+        SELECT id, query, video_id, title, performer, duration, thumbnail_url, created_at
+        FROM tracks
+        WHERE query ILIKE %s
+        ORDER BY created_at DESC;
+        """
+
+        async with acquire_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(select_sql, (f"%{query}%",))
+                rows = await cursor.fetchall()
+                return [Track_DB.deserialize(row) for row in rows]
+            
+    @staticmethod
+    async def delete_by_video_id(video_id: str):
+      delete_sql = """
+          DELETE FROM tracks
+          WHERE video_id = %s;
+      """
+      async with acquire_connection() as conn:
+          async with conn.cursor() as cursor:
+              await cursor.execute(delete_sql, (video_id,))
+
+
 
 class Track:
   @staticmethod

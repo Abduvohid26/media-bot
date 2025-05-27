@@ -19,10 +19,16 @@ from mediabot.features.track.constants import TRACK_SEARCH_LIMIT
 from mediabot.features.advertisement.handlers import advertisement_message_send
 from mediabot.exceptions import InstanceQuotaLimitReachedException
 from mediabot.utils import get_local_path_of
+from mediabot.features.track.model import Track_DB
 
 async def _track_search(context: Context, search_query: str, search_page: int, chat_id: int, user_id: int) -> typing.Tuple[str, InlineKeyboardMarkup]:
+  search_results = None
   try:
-    search_results = await Track.search(search_query, search_page, TRACK_SEARCH_LIMIT)
+    search_results = await Track_DB.get_by_query(query=search_query)
+      
+    if not search_results:
+      search_results = await Track.search(search_query, search_page, TRACK_SEARCH_LIMIT)
+      await Track_DB.save_all(search_query, search_results)
     search_results_text = f"🔍 \"{search_query}\"\n\n"
 
     for [index, search_result] in enumerate(search_results):
@@ -38,9 +44,9 @@ async def _track_search(context: Context, search_query: str, search_page: int, c
       chat_id=chat_id,
       user_id=user_id
     ))
-
     return (search_results_text, reply_markup)
   except Exception as ex:
+    print(traceback.format_exc())
     await context.bot.send_message(chat_id, context.l("request.failed_text"))
 
     context.logger.error(None, extra=dict(
@@ -52,6 +58,25 @@ async def _track_search(context: Context, search_query: str, search_page: int, c
     ))
 
     raise ApplicationHandlerStop()
+  finally:
+    new_search_results = await Track.search(search_query, search_page, TRACK_SEARCH_LIMIT)
+    if len(search_results) != len(new_search_results):
+        try:
+          for track in search_results:
+            await Track_DB.delete_by_video_id(track["id"]) 
+          await Track_DB.save_all(search_query, new_search_results)
+        except Exception as ex:
+          print(traceback.format_exc())
+          await context.bot.send_message(chat_id, context.l("request.failed_text"))
+          context.logger.error(None, extra=dict(
+            action="TRACK_SEARCH_FAILED",
+            search_query=search_query,
+            chat_id=chat_id,
+            user_id=user_id,
+            stack_trace=traceback.format_exc()
+          ))
+
+
 
 async def _track_download(context: Context, track_id: str, chat_id: int, user_id: int) -> None:
   processing_text = await context.bot.send_message(chat_id, context.l("request.processing_text"))
@@ -86,6 +111,7 @@ async def _track_download(context: Context, track_id: str, chat_id: int, user_id
     ))
   finally:
     await processing_text.delete()
+
 
 async def track_handle_search_callback_query(update: Update, context: Context) -> None:
   assert update.callback_query and update.callback_query.data and context.matches and update.effective_chat \
