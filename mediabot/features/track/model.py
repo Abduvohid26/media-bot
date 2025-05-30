@@ -157,7 +157,7 @@ class Track:
   async def search(query: str, offset: int = 0, limit: int = 10) -> list[dict]:
     params = {"query": query, "offset": offset, "limit": limit}
 
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(5), raise_for_status=True) as http_session:
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(15), raise_for_status=True) as http_session:
       async with http_session.get(urljoin(MEDIA_SERVICE_BASE_URL, "/track-search"), params=params) as http_response:
         search_result = await http_response.json()
         return search_result["search_results"]

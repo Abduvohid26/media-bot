@@ -86,7 +86,6 @@ async def _track_download(context: Context, track_id: str, chat_id: int, user_id
 
     if not track_file_id:
       track_file_id = await Track.download_telegram(track_id, context.instance.token, context.instance.username)
-  
     sent_message = await advertisement_message_send(context, chat_id, Advertisement.KIND_AUDIO, audio=track_file_id)
     await Track.set_track_cache_file_id(context.instance.id, track_id, sent_message.audio.file_id)
 
@@ -100,6 +99,8 @@ async def _track_download(context: Context, track_id: str, chat_id: int, user_id
     ))
 
   except Exception:
+    print("TRACK IN ERROR ON TRCAK DOWNLOAD (_track_download)")
+    print(traceback.format_exc())
     await context.bot.send_message(chat_id, context.l("request.failed_text"))
 
     context.logger.error(None, extra=dict(
@@ -137,25 +138,32 @@ async def track_handle_search_callback_query(update: Update, context: Context) -
   await update.effective_message.edit_text(search_results_text, reply_markup=inline_keyboard_markup)
 
 async def track_handle_search_message(update: Update, context: Context) -> None:
-  assert update.message and update.effective_chat and update.effective_user and context.user_data is not None \
-      and update.effective_message and update.effective_message.text
+  try:
+    assert update.message and update.effective_chat and update.effective_user and context.user_data is not None \
+           and update.effective_message and update.effective_message.text
 
-  await required_join_feature.required_join_handle(context, update.effective_chat.id, \
-    update.effective_user.id, RequiredJoinKind.MEDIA_QUERY)
+    await required_join_feature.required_join_handle(context, update.effective_chat.id, \
+                                                     update.effective_user.id, RequiredJoinKind.MEDIA_QUERY)
 
-  if (context.instance.track_quota != -1) and context.instance.track_quota <= context.instance.track_used:
-    raise InstanceQuotaLimitReachedException()
+    if (context.instance.track_quota != -1) and context.instance.track_quota <= context.instance.track_used:
+      raise InstanceQuotaLimitReachedException()
 
-  search_query = update.effective_message.text
-  search_page = 0
+    search_query = update.effective_message.text
+    search_page = 0
 
-  (search_results_text, reply_markup) = await _track_search(context, search_query, \
-      search_page, update.effective_chat.id, update.effective_user.id)
+    (search_results_text, reply_markup) = await _track_search(context, search_query, \
+                                                              search_page, update.effective_chat.id,
+                                                              update.effective_user.id)
 
-  await advertisement_message_send(context, update.effective_chat.id, Advertisement.KIND_TRACK_SEARCH, \
-      text=search_results_text, reply_markup=reply_markup, reply_to_message_id=update.message.id)
+    await advertisement_message_send(context, update.effective_chat.id, Advertisement.KIND_TRACK_SEARCH, \
+                                     text=search_results_text, reply_markup=reply_markup,
+                                     reply_to_message_id=update.message.id)
 
-  context.user_data[TRACK_SEARCH_QUERY_CONTEXT] = search_query
+    context.user_data[TRACK_SEARCH_QUERY_CONTEXT] = search_query
+  except Exception as e:
+    print("ERROR IN TRACK")
+    print(str(e))
+    print(traceback.format_exc())
 
 async def track_handle_search_chat_member(update: Update, context: Context, search_query: str) -> None:
   assert update.chat_member and context.user_data is not None
@@ -172,20 +180,25 @@ async def track_handle_search_chat_member(update: Update, context: Context, sear
 
 # @check_pending_request(TrackDownloadRequest)
 async def track_handle_download_callback_query(update: Update, context: Context) -> None:
-  assert update.callback_query and update.effective_message and context.user_data is not None and context.matches and update.effective_user and update.effective_chat
+  try:
+    assert update.callback_query and update.effective_message and context.user_data is not None and context.matches and update.effective_user and update.effective_chat
 
-  await update.callback_query.answer()
+    await update.callback_query.answer()
 
-  track_id = str(context.matches[0].groups(0)[0])
-  print(track_id, "ID")
+    track_id = str(context.matches[0].groups(0)[0])
+    print(track_id, "ID")
 
-  await required_join_feature.required_join_handle(context, update.effective_chat.id, \
-    update.effective_user.id, RequiredJoinKind.MEDIA_DOWNLOAD)
+    await required_join_feature.required_join_handle(context, update.effective_chat.id, \
+                                                     update.effective_user.id, RequiredJoinKind.MEDIA_DOWNLOAD)
 
-  if (context.instance.track_quota != -1) and context.instance.track_quota <= context.instance.track_used:
-    raise InstanceQuotaLimitReachedException()
+    if (context.instance.track_quota != -1) and context.instance.track_quota <= context.instance.track_used:
+      raise InstanceQuotaLimitReachedException()
 
-  await _track_download(context, track_id, update.effective_chat.id, update.effective_user.id)
+    await _track_download(context, track_id, update.effective_chat.id, update.effective_user.id)
+  except Exception as e:
+    print("ERROR IN TRACK DOWNLOAD")
+    print(str(e))
+    print(traceback.format_exc())
 
 async def track_handle_download_chat_member(update: Update, context: Context, track_id: str) -> None:
   assert update.chat_member
