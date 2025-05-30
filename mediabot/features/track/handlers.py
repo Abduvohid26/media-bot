@@ -42,7 +42,9 @@ async def _track_search(context: Context, search_query: str, search_page: int, c
     else:
       from_cache = True
     search_results_text = f"🔍 \"{search_query}\"\n\n"
-
+    if not search_results:
+      # await context.bot.send_message(chat_id, context.l("request.failed_text"))
+      return
     for [index, search_result] in enumerate(search_results):
       search_results_text += f"<i><b>{index+1})</b> {search_result['title']} (<u>{time.strftime('%M:%S', time.gmtime(search_result['duration'] or 0))}</u>)</i>\n"
 
