@@ -25,7 +25,6 @@ from mediabot.features.track import TrackRecognizeFromVideoNoteFeature, TrackSea
     TrackPopularTracksFeature, TrackRecognizeFromVoiceFeature, TrackRecognizeFromVideoFeature, TrackRecognizeFromAudioFeature
 from mediabot.features.track.handlers import track_handle_download_web
 from mediabot.features.youtube import YouTubeSearchFeature, YouTubeLinkFeature, YouTubeDownloadFeature
-from mediabot.features.youtube_voice import YouTubeVoiceSearchFeature
 from mediabot.features.twitter import TwitterFeature
 from mediabot.features.likee import LikeeFeature
 from mediabot.features.tumblr import TumblrFeature
@@ -200,7 +199,7 @@ class Instance:
 
     if self.instance.track_search_feature_enabled:
       TrackSearchFeature.register_handlers(self.botapp)
-      YouTubeVoiceSearchFeature.register_handlers(self.botapp) ############################################################
+      # YouTubeVoiceSearchFeature.register_handlers(self.botapp) ############################################################
 
     if self.instance.track_download_feature_enabled:
       TrackDownloadFeature.register_handlers(self.botapp)
