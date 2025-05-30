@@ -83,35 +83,23 @@ class Track_DB:
         async with acquire_connection() as conn:
             async with conn.cursor() as cursor:
                 await cursor.executemany(insert_sql, data)
-   
 
     @staticmethod
-    async def get_by_query(query: str, limit: int = 10) -> List[_Track_DB]:
-      parts = query.split()
-      # select_sql = f"""
-      #     SELECT id, query, video_id, title, performer, duration, thumbnail_url, created_at
-      #     FROM tracks
-      #     WHERE {" AND ".join(["query ILIKE %s" for _ in parts])}
-      #     ORDER BY created_at DESC
-      #     LIMIT %s;
-      # """
+    async def get_by_query(query: str, limit: int = 10) -> List[dict]:
+        pattern = f"%{query.strip()}%"
+        select_sql = """
+            SELECT video_id AS id, title, performer, duration, thumbnail_url
+            FROM tracks
+            WHERE query ILIKE %s
+            ORDER BY created_at DESC
+            LIMIT %s;
+        """
+        async with acquire_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(select_sql, (pattern, limit))
+                rows = await cursor.fetchall()
+                return rows
 
-      # params = [f"%{part}%" for part in parts] + [limit]
-      select_sql = """
-          SELECT video_id AS id, title, performer, duration, thumbnail_url
-          FROM tracks
-          WHERE similarity(query, %s::text) > 0.2
-          ORDER BY similarity(query, %s::text) DESC
-          LIMIT %s;
-      """
-      params = [query, query, limit]
-
-
-      async with acquire_connection() as conn:
-          async with conn.cursor() as cursor:
-              await cursor.execute(select_sql, params)
-              rows = await cursor.fetchall()
-              return rows
     @staticmethod
     async def get(track_id: int) -> _Track_DB | None:
         select_sql = """
@@ -149,7 +137,7 @@ class Track_DB:
       async with acquire_connection() as conn:
           async with conn.cursor() as cursor:
               await cursor.execute(delete_sql, (video_id,))
-
+          await conn.commit()
 
 
 class Track:

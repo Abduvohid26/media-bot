@@ -31,12 +31,16 @@ from mediabot.features.track.model import Track_DB
 
 async def _track_search(context: Context, search_query: str, search_page: int, chat_id: int, user_id: int) -> typing.Tuple[str, InlineKeyboardMarkup]:
   search_results = None
+  from_cache = False
   try:
     search_results = await Track_DB.get_by_query(query=search_query)
+    # print(search_results, "DB TRACK TEXT RESULT")
       
     if not search_results:
       search_results = await Track.search(search_query, search_page, TRACK_SEARCH_LIMIT)
       await Track_DB.save_all(search_query, search_results)
+    else:
+      from_cache = True
     search_results_text = f"🔍 \"{search_query}\"\n\n"
 
     for [index, search_result] in enumerate(search_results):
@@ -67,22 +71,26 @@ async def _track_search(context: Context, search_query: str, search_page: int, c
 
     raise ApplicationHandlerStop()
   finally:
-    new_search_results = await Track.search(search_query, search_page, TRACK_SEARCH_LIMIT)
-    if len(search_results) != len(new_search_results):
+    if from_cache:
+      async def update_cached_tracks():
         try:
-          for track in search_results:
-            await Track_DB.delete_by_video_id(track["id"]) 
-          await Track_DB.save_all(search_query, new_search_results)
-        except Exception as ex:
-          print(traceback.format_exc())
+          new_results = await Track.search(search_query, search_page, TRACK_SEARCH_LIMIT)
+          if len(search_results or []) != len(new_results) and len(new_results) > len(search_results or []):
+            for track in search_results or []:
+              await Track_DB.delete_by_video_id(track["id"])
+            await Track_DB.save_all(search_query, new_results)
+        except Exception:
+          traceback_text = traceback.format_exc()
+          print(traceback_text)
           await context.bot.send_message(chat_id, context.l("request.failed_text"))
           context.logger.error(None, extra=dict(
-            action="TRACK_SEARCH_FAILED",
+            action="TRACK_SEARCH_UPDATE_FAILED",
             search_query=search_query,
             chat_id=chat_id,
             user_id=user_id,
-            stack_trace=traceback.format_exc()
+            stack_trace=traceback_text
           ))
+      asyncio.create_task(update_cached_tracks())
 
 
 
