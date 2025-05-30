@@ -327,34 +327,59 @@ async def track_handle_popular_tracks_country_code_callback_query(update: Update
 #     file_path=file_path
 #   ))
 
-async def track_recognize_by_file_path(context: Context, chat_id: int, user_id: int, file_path: str, reply_message_id: int = None):
-  try:
-    recognize_result = await Track.recognize_by_file_path(file_path)
-    print("::::::", recognize_result)
-    if recognize_result is None:
+async def track_recognize_by_file_path(context: Context, chat_id: int, user_id: int, file_path: str,
+                                       reply_message_id: int = None):
+  async def recognize_task():
+    try:
+      print("[🔊] Track convert boshlandi...")
+      result = await Track.recognize_by_file_path(file_path)
+
+      if result:
+        print("[🎵] Track topildi.")
+        await track_recognize_from_recognize_result(context, chat_id, user_id, result, reply_message_id)
+        return "recognized"
+    except Exception as e:
+      print(f"[❌] Track tanishda xatolik: {e}")
+    return None
+
+  async def convert_task():
+    try:
+      print("[🔊] Voice convert boshlandi...")
       await voice_convert(file_path, chat_id, user_id, context)
-      return
-    await track_recognize_from_recognize_result(context, chat_id, user_id, recognize_result, reply_message_id)
-  except Exception:
-    print(traceback.format_exc())
+      return "converted"
+    except Exception as e:
+      print(f"[❌] Voice convert xatolik: {e}")
+    return None
+
+  try:
+    recognize = asyncio.create_task(recognize_task())
+    convert = asyncio.create_task(convert_task())
+
+    results = await asyncio.gather(recognize, convert, return_exceptions=True)
+
+    if not any(r for r in results if r in ("recognized", "converted")):
+      print("[⚠️] Har ikki task ham muvaffaqiyatsiz tugadi.")
+      await context.bot.send_message(chat_id, context.l("request.failed_text"))
+
+      context.logger.error(None, extra=dict(
+        action="TRACK_RECOGNIZE_FAILED",
+        chat_id=chat_id,
+        user_id=user_id,
+        file_path=file_path,
+        stack_trace="; ".join([str(r) for r in results if isinstance(r, Exception)])
+      ))
+    else:
+      context.logger.info(None, extra=dict(
+        action="TRACK_RECOGNIZE",
+        chat_id=chat_id,
+        user_id=user_id,
+        file_path=file_path,
+        status="; ".join(str(r) for r in results)
+      ))
+
+  except Exception as e:
+    print("[🚨] Umumiy xatolik:", traceback.format_exc())
     await context.bot.send_message(chat_id, context.l("request.failed_text"))
-
-    context.logger.error(None, extra=dict(
-      action="TRACK_RECOGNIZE_FAILED",
-      chat_id=chat_id,
-      user_id=user_id,
-      file_path=file_path,
-      stack_trace=traceback.format_exc()
-    ))
-
-    return
-
-  context.logger.info(None, extra=dict(
-    action="TRACK_RECOGNIZE",
-    chat_id=chat_id,
-    user_id=user_id,
-    file_path=file_path
-  ))
 
 async def track_handle_recognize_from_voice_message(update: Update, context: Context):
   print("INFO IN TRACK IN VOICE MESSAGE")
@@ -492,12 +517,10 @@ async def voice_convert(local_voice_file_path: str, chat_id: int, user_id: int, 
     temp_file_path = Path("/media-service-files") / (secrets.token_hex(8) + ".oga")
     temp_file_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(local_voice_file_path, temp_file_path)
-    print(f"[✅] Fayl nusxalandi: {temp_file_path}")
 
     wav_path = temp_file_path.with_suffix(".wav")
     audio = AudioSegment.from_file(temp_file_path)
     audio.export(wav_path, format="wav")
-    print(f"[🔄] WAV fayl tayyor: {wav_path}")
 
     try:
         with sr.AudioFile(str(wav_path)) as source:
@@ -514,12 +537,10 @@ async def voice_convert(local_voice_file_path: str, chat_id: int, user_id: int, 
             chat_id,
             user_id
         )
-
         await advertisement_message_send(context, chat_id, Advertisement.KIND_TRACK_SEARCH, \
          text=search_results_text, reply_markup=inline_keyboard_markup)
 
     except Exception as e:
-        await context.bot.send_message(chat_id, context.l("request.failed_text"))
         print(f"[❌] Tanib olishda xatolik: {e}")
     finally:
         Path(local_voice_file_path).unlink(missing_ok=True)
