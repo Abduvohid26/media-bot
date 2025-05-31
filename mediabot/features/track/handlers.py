@@ -42,16 +42,16 @@ async def _track_search(context: Context, search_query: str, search_page: int, c
     else:
       from_cache = True
     search_results_text = f"🔍 \"{search_query}\"\n\n"
-    if not search_results:
+    print(search_results_text, "RESULT")
+    # if not search_results:
       # await context.bot.send_message(chat_id, context.l("request.failed_text"))
-      return
+      # return
     for [index, search_result] in enumerate(search_results):
       search_results_text += f"<i><b>{index+1})</b> {search_result['title']} (<u>{time.strftime('%M:%S', time.gmtime(search_result['duration'] or 0))}</u>)</i>\n"
 
     reply_markup = TrackSearchDownloadWebKeyboardMarkup.build(search_results, context) \
         if context.instance.web_feature_enabled else TrackSearchDownloadInlineKeyboardMarkup.build(search_results)
     reply_markup = InlineKeyboardMarkup(reply_markup.inline_keyboard + TrackSearchPaginationKeyboardMarkup.build(search_page).inline_keyboard)
-
     context.logger.info(None, extra=dict(
       action="TRACK_SEARCH",
       search_query=search_query,
@@ -168,10 +168,14 @@ async def track_handle_search_message(update: Update, context: Context) -> None:
 
     search_query = update.effective_message.text
     search_page = 0
-
     (search_results_text, reply_markup) = await _track_search(context, search_query, \
                                                               search_page, update.effective_chat.id,
                                                               update.effective_user.id)
+    print(search_results_text, reply_markup)
+    if not  search_results_text:
+      await context.bot.send_message(update.effective_chat.id, context.l("request.failed_text"))
+
+
 
     await advertisement_message_send(context, update.effective_chat.id, Advertisement.KIND_TRACK_SEARCH, \
                                      text=search_results_text, reply_markup=reply_markup,
@@ -531,11 +535,13 @@ async def voice_convert(local_voice_file_path: str, chat_id: int, user_id: int, 
 
         text = recognizer.recognize_google(audio_data, language="uz")
         print(f"[📝] Aniqlangan matn: {text}")
-
+        words = text.split()
+        short_text = " ".join(words[:6])  # dastlabki 6 ta so‘z
+        print(short_text, "SHORT")
         search_page = 0
         search_results_text, inline_keyboard_markup = await _track_search(
             context,
-            text,
+            short_text,
             search_page,
             chat_id,
             user_id
