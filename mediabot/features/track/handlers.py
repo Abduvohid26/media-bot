@@ -32,6 +32,8 @@ from mediabot.features.track.model import Track_DB
 async def _track_search(context: Context, search_query: str, search_page: int, chat_id: int, user_id: int) -> typing.Tuple[str, InlineKeyboardMarkup]:
   search_results = None
   from_cache = False
+  words = search_query.split()
+  search_query = " ".join(words[:6])
   try:
     search_results = await Track_DB.get_by_query(query=search_query)
     # print(search_results, "DB TRACK TEXT RESULT")
@@ -42,10 +44,6 @@ async def _track_search(context: Context, search_query: str, search_page: int, c
     else:
       from_cache = True
     search_results_text = f"🔍 \"{search_query}\"\n\n"
-    print(search_results_text, "RESULT")
-    # if not search_results:
-      # await context.bot.send_message(chat_id, context.l("request.failed_text"))
-      # return
     for [index, search_result] in enumerate(search_results):
       search_results_text += f"<i><b>{index+1})</b> {search_result['title']} (<u>{time.strftime('%M:%S', time.gmtime(search_result['duration'] or 0))}</u>)</i>\n"
 
@@ -537,7 +535,6 @@ async def voice_convert(local_voice_file_path: str, chat_id: int, user_id: int, 
         print(f"[📝] Aniqlangan matn: {text}")
         words = text.split()
         short_text = " ".join(words[:6])  # dastlabki 6 ta so‘z
-        print(short_text, "SHORT")
         search_page = 0
         search_results_text, inline_keyboard_markup = await _track_search(
             context,
