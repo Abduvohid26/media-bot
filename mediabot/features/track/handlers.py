@@ -34,7 +34,6 @@ async def _track_search(context: Context, search_query: str, search_page: int, c
   from_cache = False
   words = search_query.split()
   search_query = " ".join(words[:5])
-  print(search_query, "QUERY")
   try:
     search_results = await Track_DB.get_by_query(query=search_query)
     # print(search_results, "DB TRACK TEXT RESULT")
@@ -170,7 +169,6 @@ async def track_handle_search_message(update: Update, context: Context) -> None:
     (search_results_text, reply_markup) = await _track_search(context, search_query, \
                                                               search_page, update.effective_chat.id,
                                                               update.effective_user.id)
-    print(search_results_text, reply_markup)
     if not  search_results_text:
       await context.bot.send_message(update.effective_chat.id, context.l("request.failed_text"))
 
