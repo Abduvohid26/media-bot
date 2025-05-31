@@ -33,7 +33,7 @@ async def _track_search(context: Context, search_query: str, search_page: int, c
   search_results = None
   from_cache = False
   words = search_query.split()
-  search_query = " ".join(words[:6])
+  search_query = " ".join(words[:5])
   print(search_query, "QUERY")
   try:
     search_results = await Track_DB.get_by_query(query=search_query)
