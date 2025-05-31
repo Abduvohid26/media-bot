@@ -333,6 +333,7 @@ async def track_recognize_by_file_path(context: Context, chat_id: int, user_id: 
     try:
       print("[🔊] Track convert boshlandi...")
       result = await Track.recognize_by_file_path(file_path)
+      print(result)
 
       if result:
         print("[🎵] Track topildi.")
@@ -345,8 +346,11 @@ async def track_recognize_by_file_path(context: Context, chat_id: int, user_id: 
   async def convert_task():
     try:
       print("[🔊] Voice convert boshlandi...")
-      await voice_convert(file_path, chat_id, user_id, context)
-      return "converted"
+      check = await voice_convert(file_path, chat_id, user_id, context)
+      if check:
+        return "converted"
+      else:
+        return None
     except Exception as e:
       print(f"[❌] Voice convert xatolik: {e}")
     return None
@@ -356,7 +360,6 @@ async def track_recognize_by_file_path(context: Context, chat_id: int, user_id: 
     convert = asyncio.create_task(convert_task())
 
     results = await asyncio.gather(recognize, convert, return_exceptions=True)
-
     if not any(r for r in results if r in ("recognized", "converted")):
       print("[⚠️] Har ikki task ham muvaffaqiyatsiz tugadi.")
       await context.bot.send_message(chat_id, context.l("request.failed_text"))
@@ -539,9 +542,11 @@ async def voice_convert(local_voice_file_path: str, chat_id: int, user_id: int, 
         )
         await advertisement_message_send(context, chat_id, Advertisement.KIND_TRACK_SEARCH, \
          text=search_results_text, reply_markup=inline_keyboard_markup)
+        return True
 
     except Exception as e:
         print(f"[❌] Tanib olishda xatolik: {e}")
+        return False
     finally:
         Path(local_voice_file_path).unlink(missing_ok=True)
         temp_file_path.unlink(missing_ok=True)
