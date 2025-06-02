@@ -189,7 +189,7 @@
 import traceback
 import pathlib
 from telegram import Update
-
+from mediabot.cache import redis
 import mediabot.features.required_join.handlers as required_join_feature
 import mediabot.features.track.handlers as track_feature
 from mediabot.context import Context
@@ -203,13 +203,18 @@ from mediabot.features.instagram.model import Instagram
 from mediabot.features.track.model import Track
 from mediabot.features.media_downloader.model import MediaService
 from mediabot.utils import AsyncFileDownloader
+from mediabot.decorators import job_check
+from mediabot.cache import redis
 
+
+@job_check
 async def _instagram_handle_link(context: Context, link: str, chat_id: int, user_id: int, reply_to_message_id: int = None, use_cache: bool = True):
   processing_message = await context.bot.send_message(chat_id, context.l("request.processing_text"), reply_to_message_id=reply_to_message_id)
 
   link_info_id = ""
 
   try:
+    await redis.set(f"user:{user_id}:job", "job", ex=300)
     instagram_post = await Instagram.get(link)
     link_info_id = await MediaService.save_link_info(instagram_post)
   except Exception:
@@ -230,6 +235,7 @@ async def _instagram_handle_link(context: Context, link: str, chat_id: int, user
   await Instance.increment_instagram_used(context.instance.id)
 
   if instagram_post["type"] == "collection":
+
     await processing_message.delete()
 
     reply_markup = InstagramCollectionKeyboardMarkup.build(instagram_post["collection"], link_info_id)
@@ -260,6 +266,7 @@ async def _instagram_handle_link(context: Context, link: str, chat_id: int, user
     finally:
       pathlib.Path(downloaded_file_path).unlink(missing_ok=True)
       await processing_message.delete()
+      await redis.delete(f"user:{user_id}:job")
 
   context.logger.info(None, extra=dict(
     action="INSTAGRAM_LINK",
@@ -321,18 +328,30 @@ async def _instagram_handle_collection_item_download(context: Context, chat_id: 
     await processing_message.delete()
 
 async def instagram_handle_link_message(update: Update, context: Context):
-  assert update.effective_message and context.matches and update.effective_chat
+  user_id = update.effective_user.id
+  try:
+    assert update.effective_message and context.matches and update.effective_chat
 
-  instagram_link = context.matches[0][0]
+    instagram_link = context.matches[0][0]
 
-  await required_join_feature.required_join_handle(context, update.effective_chat.id, \
-    update.effective_user.id, required_join_feature.RequiredJoinKind.MEDIA_QUERY)
+    await required_join_feature.required_join_handle(context, update.effective_chat.id, \
+      update.effective_user.id, required_join_feature.RequiredJoinKind.MEDIA_QUERY)
 
-  if (context.instance.instagram_quota != -1) and context.instance.instagram_quota <= context.instance.instagram_used:
-    raise InstanceQuotaLimitReachedException()
+    if (context.instance.instagram_quota != -1) and context.instance.instagram_quota <= context.instance.instagram_used:
+      raise InstanceQuotaLimitReachedException()
 
-  await _instagram_handle_link(context, instagram_link, update.effective_chat.id, update.effective_chat.id)
-
+    await _instagram_handle_link(context, instagram_link, update.effective_chat.id, update.effective_chat.id)
+  except Exception as e:
+    print(str(e))
+    context.logger.error(None, extra=dict(
+      action="INSTAGRAM_LINK",
+      chat_id=update.effective_chat.id,
+      user_id=user_id,  
+      link=instagram_link,
+      stack_trace=traceback.format_exc()
+    ))
+  finally:
+    pass
 async def instagram_handle_collection_item_download_callback_query(update: Update, context: Context):
   assert update.callback_query and context.matches and update.effective_chat
 

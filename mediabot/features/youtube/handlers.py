@@ -17,6 +17,8 @@ from mediabot.features.youtube.buttons import YouTubeSearchDownloadInlineKeyboar
 from mediabot.features.youtube.model import YouTube
 from mediabot.models.request import YouTubeVideoDownloadRequest
 from mediabot.features.track.handlers import track_recognize_from_recognize_result
+from mediabot.cache import redis
+from mediabot.decorators import job_check_youtbe
 
 YOUTUBE_SEARCH_QUERY_CONTEXT = object()
 
@@ -120,13 +122,15 @@ async def _youtube_link(context: Context, chat_id: int, user_id: int, link: str)
       stack_trace=traceback.format_exc()
     ))
 
-async def _youtube_video_download(context: Context, chat_id: int, user_id: int, id: str, recognize: bool = False):
+@job_check_youtbe
+async def _youtube_video_download(context: Context, chat_id: int, user_id: int, id: str, recognize: bool = False, job: str = "job"):
   processing_message = await context.bot.send_message(chat_id, context.l("request.processing_text"))
   recognize_result = None
 
   try:
     file_id = await YouTube.get_youtube_cache_file_id(context.instance.id, id, False)
     if not file_id:
+      await redis.set(f"user:{user_id}:job", "job", ex=300)
       (file_id, recognize_result,) = await YouTube.download_telegram(id, context.instance.token, recognize=recognize)
 
     sent_message = await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=file_id)
@@ -147,6 +151,7 @@ async def _youtube_video_download(context: Context, chat_id: int, user_id: int, 
     ))
   finally:
     await processing_message.delete()
+    await redis.delete(f"user:{user_id}:job")
 
 async def youtube_handle_preview_callback_query(update: Update, context: Context):
   assert update.callback_query and update.effective_chat and update.effective_user

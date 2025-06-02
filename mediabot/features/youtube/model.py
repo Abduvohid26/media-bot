@@ -10,7 +10,6 @@ class YouTube:
   @staticmethod
   async def search(search_query: str, offset: int, limit: int):
     try:
-      print("salom bro")
       params = {"query": search_query, "offset": offset, "limit": limit}
 
       async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(12), raise_for_status=True) as http_session:
@@ -24,7 +23,6 @@ class YouTube:
   @staticmethod
   async def download_telegram(id: str, telegram_bot_token: str, recognize: bool = False, attempt: int = 1) -> str:
     params = {"id": id, "telegram_bot_token": telegram_bot_token}
-    print(params, "Param nima gap")
     if recognize:
       params["recognize"] = 1
 

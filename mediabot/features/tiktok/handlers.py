@@ -11,7 +11,10 @@ from mediabot.features.tiktok.model import TikTok
 from mediabot.features.advertisement.handlers import advertisement_message_send
 from mediabot.features.advertisement.model import Advertisement
 from mediabot.features.track.model import Track
+from mediabot.cache import redis
+from mediabot.decorators import job_check
 
+@job_check
 async def _tiktok_download_telegram(context: Context, link: str, chat_id: int, user_id: int, reply_to_message_id=None):
   processing_message = await context.bot.send_message(chat_id, \
       context.l("request.processing_text"), reply_to_message_id=reply_to_message_id)
@@ -23,6 +26,7 @@ async def _tiktok_download_telegram(context: Context, link: str, chat_id: int, u
       sent_message = await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=file_id_cache)
       await TikTok.set_tiktok_cache_file_id(context.instance.id, link, sent_message.video.file_id)
     else:
+      await redis.set(f"user:{user_id}:job", "job", ex=300)
       file_id = await TikTok.download_telegram(link, context.instance.token)
       sent_message = await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=file_id)
       await TikTok.set_tiktok_cache_file_id(context.instance.id, link, sent_message.video.file_id)
@@ -46,6 +50,7 @@ async def _tiktok_download_telegram(context: Context, link: str, chat_id: int, u
     print(traceback.format_exc())
   finally:
     await processing_message.delete()
+    await redis.delete(f"user:{user_id}:job")
 
   await Instance.increment_tiktok_used(context.instance.id)
 
@@ -69,21 +74,25 @@ async def _tiktok_download_telegram(context: Context, link: str, chat_id: int, u
         link=link
       ))
 
+
 async def tiktok_handle_link_message(update: Update, context: Context):
-  assert update.effective_chat and update.effective_user
-  tiktok_link = context.matches[0].group(0)
+  try:
+    assert update.effective_chat and update.effective_user
+    tiktok_link = context.matches[0].group(0)
 
-  await required_join_feature_handlers.required_join_handle(context, update.effective_chat.id, \
-    update.effective_user.id, RequiredJoinKind.MEDIA_QUERY)
+    await required_join_feature_handlers.required_join_handle(context, update.effective_chat.id, \
+      update.effective_user.id, RequiredJoinKind.MEDIA_QUERY)
 
-  if (context.instance.tiktok_quota != -1) and context.instance.tiktok_quota <= context.instance.tiktok_used:
-    raise InstanceQuotaLimitReachedException()
+    if (context.instance.tiktok_quota != -1) and context.instance.tiktok_quota <= context.instance.tiktok_used:
+      raise InstanceQuotaLimitReachedException()
 
-  await _tiktok_download_telegram(context, tiktok_link, update.effective_chat.id, update.effective_user.id, reply_to_message_id=update.effective_message.id)
+    await _tiktok_download_telegram(context, tiktok_link, update.effective_chat.id, update.effective_user.id, reply_to_message_id=update.effective_message.id)
+  except Exception as e:
+    print(traceback.format_exc())
+    print(str(e))
 
 async def tiktok_handle_download_callback_query(update: Update, context: Context):
   assert update.effective_chat and update.effective_user and update.callback_query
-  print("salom")
   id = context.matches[0].group(1)
   format_id = context.matches[0].group(2)
 
