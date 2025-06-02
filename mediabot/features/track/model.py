@@ -146,7 +146,7 @@ class Track:
     params = {"query": query, "offset": offset, "limit": limit}
 
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(15), raise_for_status=True) as http_session:
-      async with http_session.get(urljoin(MEDIA_SERVICE_BASE_URL, "/track-search"), params=params) as http_response:
+      async with http_session.get(urljoin("http://46.166.162.17:8050", "/track-search"), params=params) as http_response:
         search_result = await http_response.json()
         return search_result["search_results"]
 
