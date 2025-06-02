@@ -194,7 +194,7 @@ class Track:
   async def recognize_by_link(link: str):
     params = {"link": str(URL(link))}
 
-    async with aiohttp.ClientSession(MEDIA_SERVICE_BASE_URL) as http_session:
+    async with aiohttp.ClientSession(f"http://84.32.59.4:8050") as http_session:
       async with http_session.post("/track-recognize-by-link", params=params) as http_response:
         json_response = await http_response.json()
         return json_response["recognize_result"]
