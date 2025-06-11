@@ -20,9 +20,21 @@ class MediaDataBase:
 
     @staticmethod
     async def add_media_data(platform: str, link: str, file_id: str, caption: str = None, bot_token: str = None, bot_username: str = None):
-        params = {"platform": platform, "link": link, "file_id": file_id, "caption": caption, "bot_token": bot_token, "bot_username": bot_username}
-        query = "INSERT INTO media_data (platform, link, file_id, caption, bot_token, bot_username) VALUES (%(platform)s, %(link)s, %(file_id)s, %(caption)s, %(bot_token)s, %(bot_username)s);"
+        params = {
+            "platform": platform,
+            "link": link,
+            "file_id": file_id,
+            "caption": caption,
+            "bot_token": bot_token,
+            "bot_username": bot_username
+        }
+        query = """
+        INSERT INTO media_data (platform, link, file_id, caption, bot_token, bot_username)
+        VALUES (%(platform)s, %(link)s, %(file_id)s, %(caption)s, %(bot_token)s, %(bot_username)s)
+        ON CONFLICT (link) DO NOTHING;
+        """
         async with acquire_connection() as connection:
             await connection.execute(query, params)
+
 
     

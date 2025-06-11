@@ -20,6 +20,8 @@ from mediabot.features.track.handlers import track_recognize_from_recognize_resu
 from mediabot.cache import redis
 from mediabot.decorators import job_check_youtbe
 from mediabot.features.client_manager.manage import ClientManager
+from mediabot.features.media_data.model import MediaDataBase
+from mediabot.features.centrial_bot.bots.model import CentralBot
 
 YOUTUBE_SEARCH_QUERY_CONTEXT = object()
 
@@ -125,49 +127,85 @@ async def _youtube_link(context: Context, chat_id: int, user_id: int, link: str)
 
 
 
+
+
 async def _youtube_video_download(context: Context, chat_id: int, user_id: int, id: str, recognize: bool = False, job: str = "job"):
-  processing_message = None
-  recognize_result = None
-  is_pending_set = False
+    processing_message = None
+    recognize_result = None
+    is_pending_set = False
 
-  try:
-      file_id = await YouTube.get_youtube_cache_file_id(context.instance.id, id, False)
+    try:
+        try:
+            media_file_data, check = await MediaDataBase.get_media_by_link(id, bot_token=context.instance.token)
+            if media_file_data:
+                if check:
+                    print("AQALE")
+                    await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=media_file_data.get("file_id"))
+                    return
+                
+                channel_id = await CentralBot.get_channel_id()
+                message_channel = await context.bot.send_message_video(
+                    channel_id, 
+                    media_file_data.get("file_id"), 
+                    caption=id
+                )
+                await CentralBot.api_send_external_media(
+                    id, 
+                    context.instance.token, 
+                    context.instance.username, 
+                    context.instance.id, 
+                    channel_id, 
+                    message_channel.message_id
+                )
+                return
+            check_data = await CentralBot.check_main_bot(
+                id, 
+                context.instance.token, 
+                context.instance.username, 
+                chat_id
+            )
+            if check_data.get("status"):
+                return
+        except Exception as e:
+            print("error", e)
+            pass
+        file_id = await YouTube.get_youtube_cache_file_id(context.instance.id, id, False)
 
-      if not file_id:
-        if await ClientManager.is_client_pending(user_id):
-          await context.bot.send_message(chat_id, context.l("request.pending"))
-          return
+        if not file_id:
+            if await ClientManager.is_client_pending(user_id):
+                await context.bot.send_message(chat_id, context.l("request.pending"))
+                return
 
-        await ClientManager.set_client_pending(user_id)
-        is_pending_set = True
+            await ClientManager.set_client_pending(user_id)
+            is_pending_set = True
 
-        processing_message = await context.bot.send_message(chat_id, context.l("request.processing_text"))
+            processing_message = await context.bot.send_message(chat_id, context.l("request.processing_text"))
 
-        file_id, recognize_result = await YouTube.download_telegram(id, context.instance.token, recognize=recognize)
+            file_id, recognize_result = await YouTube.download_telegram(id, context.instance.token, recognize=recognize)
 
-      sent_message = await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=file_id)
+        sent_message = await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=file_id)
 
-      if recognize_result:
-        await track_recognize_from_recognize_result(context, chat_id, user_id, recognize_result)
+        if recognize_result:
+            await track_recognize_from_recognize_result(context, chat_id, user_id, recognize_result)
+        await MediaDataBase.add_media_data("youtube", id, sent_message.video.file_id, caption=id, bot_token=context.instance.token, bot_username=context.instance.username)
+        await YouTube.set_youtube_cache_file_id(context.instance.id, id, False, sent_message.video.file_id)
 
-      await YouTube.set_youtube_cache_file_id(context.instance.id, id, False, sent_message.video.file_id)
+    except Exception:
+        context.logger.error(None, extra=dict(
+            action="YOUTUBE_VIDEO_FAILED",
+            chat_id=chat_id,
+            user_id=user_id,
+            id=id,
+            stack_trace=traceback.format_exc()  
+        ))
+        await context.bot.send_message(chat_id, context.l("request.failed_text"))
 
-  except Exception:
-      context.logger.error(None, extra=dict(
-          action="YOUTUBE_VIDEO_FAILED",
-          chat_id=chat_id,
-          user_id=user_id,
-          id=id,
-          stack_trace=traceback.format_exc()
-      ))
-      await context.bot.send_message(chat_id, context.l("request.failed_text"))
+    finally:
+        if processing_message:
+            await processing_message.delete()
 
-  finally:
-    if processing_message:
-        await processing_message.delete()
-
-    if is_pending_set:
-        await ClientManager.delete_client_pending(user_id)
+        if is_pending_set:
+            await ClientManager.delete_client_pending(user_id)
 
 async def youtube_handle_preview_callback_query(update: Update, context: Context):
   assert update.callback_query and update.effective_chat and update.effective_user

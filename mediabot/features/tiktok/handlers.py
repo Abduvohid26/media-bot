@@ -80,14 +80,16 @@ async def _tiktok_download_telegram(context: Context, link: str, chat_id: int, u
             print(file_id, "file id")
             sent_message = await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=file_id)
             await TikTok.set_tiktok_cache_file_id(context.instance.id, link, sent_message.video.file_id)
-            await MediaDataBase.add_media_data("tiktok", link, file_id, caption=link, bot_token=context.instance.token, bot_username=context.instance.username)
             return
+        
         context.logger.info(None, extra=dict(
             action="TIKTOK_DOWNLOAD",
             chat_id=chat_id,
             user_id=user_id,
             link=link
         ))
+
+        await MediaDataBase.add_media_data("tiktok", link, file_id, caption=link, bot_token=context.instance.token, bot_username=context.instance.username)
 
         await Instance.increment_tiktok_used(context.instance.id)
 
