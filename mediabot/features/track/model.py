@@ -146,7 +146,7 @@ class Track:
     params = {"query": query, "offset": offset, "limit": limit}
 
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(15), raise_for_status=True) as http_session:
-      async with http_session.get(urljoin("http://46.166.162.17:8050", "/track-search"), params=params) as http_response:
+      async with http_session.get(urljoin(MEDIA_SERVICE_BASE_URL, "/track-search"), params=params) as http_response:
         search_result = await http_response.json()
         return search_result["search_results"]
 
@@ -189,12 +189,32 @@ class Track:
       async with http_session.post(urljoin(MEDIA_SERVICE_BASE_URL, "/track-recognize-by-file"), data=data) as http_response:
         json_response = await http_response.json()
         return json_response["recognize_result"]
+      
+  @staticmethod
+  async def recognize_by_audio_file_path(file_path):
+    data = {"file": open(file_path, "rb")}
+
+    async with aiohttp.ClientSession() as http_session:
+      async with http_session.post(urljoin(MEDIA_SERVICE_BASE_URL, "/track-recognize-youtube-audio-by-file"), data=data) as http_response:
+        json_response = await http_response.json()
+        return deserializer(json_response["recognize_result"])
 
   @staticmethod
   async def recognize_by_link(link: str):
     params = {"link": str(URL(link))}
 
-    async with aiohttp.ClientSession(f"http://84.32.59.4:8050") as http_session:
+    async with aiohttp.ClientSession(MEDIA_SERVICE_BASE_URL) as http_session:
       async with http_session.post("/track-recognize-by-link", params=params) as http_response:
         json_response = await http_response.json()
         return json_response["recognize_result"]
+
+def deserializer(data):
+  if data.get("success"):
+    return {
+        "id": None,
+        "title": data.get("text"),
+        "performer": None,
+        "thumbnail_url": None,
+        "duration": 0
+    }
+  return None

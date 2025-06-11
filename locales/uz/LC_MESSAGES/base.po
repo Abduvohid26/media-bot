@@ -21,3 +21,7 @@ msgstr "Iltimos, davom ettirish uchun quyidagi kanal/guruhga a'zo bo'ling:"
 
 msgid "required_join.default_button_text"
 msgstr "A'zo bo'lish"
+
+
+msgid "request.pending"
+msgstr "⏳ Sizning oldingi so‘rovingiz bajarilmoqda, tugashini kuting."

@@ -205,98 +205,147 @@ from mediabot.features.media_downloader.model import MediaService
 from mediabot.utils import AsyncFileDownloader
 from mediabot.decorators import job_check
 from mediabot.cache import redis
+from mediabot.features.centrial_bot.bots.model import CentralBot
+from mediabot.features.client_manager.manage import ClientManager
 
 
-@job_check
 async def _instagram_handle_link(context: Context, link: str, chat_id: int, user_id: int, reply_to_message_id: int = None, use_cache: bool = True):
-  processing_message = await context.bot.send_message(chat_id, context.l("request.processing_text"), reply_to_message_id=reply_to_message_id)
-
-  link_info_id = ""
-
   try:
-    await redis.set(f"user:{user_id}:job", "job", ex=300)
-    instagram_post = await Instagram.get(link)
-    link_info_id = await MediaService.save_link_info(instagram_post)
-  except Exception:
-    await processing_message.delete()
+    if await ClientManager.is_client_pending(user_id):
+      await context.bot.send_message(chat_id, context.l("request.pending"), reply_to_message_id=reply_to_message_id)
+      return
+    await ClientManager.set_client_pending(user_id)
 
-    await context.bot.send_message(chat_id, context.l("request.failed_text"), reply_to_message_id=reply_to_message_id)
+    processing_message = await context.bot.send_message(chat_id, context.l("request.processing_text"), reply_to_message_id=reply_to_message_id)
 
-    context.logger.error(None, extra=dict(
-      action="INSTAGRAM_LINK_FAILED",
-      chat_id=chat_id,
-      user_id=user_id,
-      link=link,
-      stack_trace=traceback.format_exc()
-    ))
+    link_info_id = ""
 
-    return
-
-  await Instance.increment_instagram_used(context.instance.id)
-
-  if instagram_post["type"] == "collection":
-
-    await processing_message.delete()
-
-    reply_markup = InstagramCollectionKeyboardMarkup.build(instagram_post["collection"], link_info_id)
-
-    # send the first collection item thumbnail to preview
-    await context.bot.send_photo(chat_id, instagram_post["collection"][0]["thumbnail_url"], reply_markup=reply_markup, reply_to_message_id=reply_to_message_id)
-  else:
-    downloaded_file_path = ""
     try:
-      downloaded_file_path = await AsyncFileDownloader.download_file_to_local(instagram_post["download_url"])
-      with open(downloaded_file_path, "rb") as fd:
+      instagram_post = await Instagram.get(link)
+      link_info_id = await MediaService.save_link_info(instagram_post)
+    except Exception:
+      await processing_message.delete()
 
-        if instagram_post["type"] == "video":
-          await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=fd, thumbnail=instagram_post["thumbnail_url"], supports_streaming=True)
-        elif instagram_post["type"] == "photo":
-          await advertisement_message_send(context, chat_id, Advertisement.KIND_PHOTO, photo=fd)
-    except:
       await context.bot.send_message(chat_id, context.l("request.failed_text"), reply_to_message_id=reply_to_message_id)
 
       context.logger.error(None, extra=dict(
-        action="INSTAGRAM_LINK_DOWNLOAD_FAILED",
+        action="INSTAGRAM_LINK_FAILED",
         chat_id=chat_id,
         user_id=user_id,
         link=link,
         stack_trace=traceback.format_exc()
       ))
+
       return
-    finally:
-      pathlib.Path(downloaded_file_path).unlink(missing_ok=True)
+
+    await Instance.increment_instagram_used(context.instance.id)
+
+    if instagram_post["type"] == "collection":
       await processing_message.delete()
-      await redis.delete(f"user:{user_id}:job")
 
-  context.logger.info(None, extra=dict(
-    action="INSTAGRAM_LINK",
-    chat_id=chat_id,
-    user_id=user_id,
-    link=link
-  ))
+      reply_markup = InstagramCollectionKeyboardMarkup.build(instagram_post["collection"], link_info_id)
 
-  if context.instance.instagram_recognize_track_feature_enabled and instagram_post["type"] == "video":
-    try:
-      recognize_result = await Track.recognize_by_link(instagram_post["download_url"])
-      if not recognize_result:
+      # send the first collection item thumbnail to preview
+      await context.bot.send_photo(chat_id, instagram_post["collection"][0]["thumbnail_url"], reply_markup=reply_markup, reply_to_message_id=reply_to_message_id)
+    else:
+      downloaded_file_path = ""
+      try:
+        downloaded_file_path = await AsyncFileDownloader.download_file_to_local(instagram_post["download_url"])
+        with open(downloaded_file_path, "rb") as fd:
+
+          if instagram_post["type"] == "video":
+            reply_markup = InstagramCollectionKeyboardMarkup.get_music_button(link_info_id, user_id)
+            await advertisement_message_send(context, chat_id, Advertisement.KIND_VIDEO, video=fd, thumbnail=instagram_post["thumbnail_url"], supports_streaming=True, reply_markup=reply_markup)
+          elif instagram_post["type"] == "photo":
+            await advertisement_message_send(context, chat_id, Advertisement.KIND_PHOTO, photo=fd)
+      except Exception as e:
+        print(f"ERROR INSTAGRAM: {e}")
+        await context.bot.send_message(chat_id, context.l("request.failed_text"), reply_to_message_id=reply_to_message_id)
+
+        context.logger.error(None, extra=dict(
+          action="INSTAGRAM_LINK_DOWNLOAD_FAILED",
+          chat_id=chat_id,
+          user_id=user_id,
+          link=link,
+          stack_trace=traceback.format_exc()
+        ))
+        return
+      finally:
+        pathlib.Path(downloaded_file_path).unlink(missing_ok=True)
+        await processing_message.delete()
+
+
+    context.logger.info(None, extra=dict(
+      action="INSTAGRAM_LINK",
+      chat_id=chat_id,
+      user_id=user_id,
+      link=link
+    ))
+
+    # print(context.instance.instagram_recognize_track_feature_enabled, "CHECK")
+    # if context.instance.instagram_recognize_track_feature_enabled and instagram_post["type"] == "video":
+    #   try:
+    #     recognize_result = await Track.recognize_by_link(instagram_post["download_url"])
+    #     if not recognize_result:
+    #       return
+
+    #     await track_feature.track_recognize_from_recognize_result(context, chat_id, user_id, recognize_result, reply_to_message_id)
+
+    #     context.logger.error(None, extra=dict(
+    #       action="INSTAGRAM_RECOGNIZE_TRACK",
+    #       chat_id=chat_id,
+    #       user_id=user_id,
+    #       link=link
+    #     ))
+    #   except Exception as ex:
+    #     context.logger.error(None, extra=dict(
+    #       action="INSTAGRAM_RECOGNIZE_TRACK_FAILED",
+    #       chat_id=chat_id,
+    #       user_id=user_id,
+    #       stack_trace=traceback.format_exc(),
+    #       link=link
+    #     ))
+  finally:
+    await ClientManager.delete_client_pending(user_id)
+    
+
+async def instagram_handle_music_button(update: Update, context: Context):
+  processing_message = await context.bot.send_message(update.effective_chat.id, context.l("request.processing_text"))
+
+  try:
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data.split(":")[-1]
+    link_info_id, user_id = data.split("-")
+
+    info = await MediaService.get_link_info(link_info_id)
+    download_url = info.get("download_url")
+
+
+    recognize_result = await Track.recognize_by_link(download_url)
+    print("recognize_result", recognize_result, download_url)
+    if not recognize_result:
+        await context.bot.send_message(update.effective_chat.id, context.l("request.failed_text"))
+
+        # await query.edit_message_caption("🎵 Musiqa topilmadi.")
         return
 
-      await track_feature.track_recognize_from_recognize_result(context, chat_id, user_id, recognize_result, reply_to_message_id)
+  
+    await track_feature.track_recognize_from_recognize_result(
+        context=context,
+        chat_id=update.effective_chat.id,
+        user_id=int(user_id),
+        recognize_result=recognize_result,
+        reply_to_message_id=query.message.message_id
+    )
+  except Exception as e:
+    print("INSTAGRAM MUSIC CALLBACK ERROR:", e)
+    traceback.print_exc()
+    await update.effective_message.reply_text("❌ Xatolik yuz berdi.")
+  finally:
+    await processing_message.delete()
 
-      context.logger.error(None, extra=dict(
-        action="INSTAGRAM_RECOGNIZE_TRACK",
-        chat_id=chat_id,
-        user_id=user_id,
-        link=link
-      ))
-    except Exception as ex:
-      context.logger.error(None, extra=dict(
-        action="INSTAGRAM_RECOGNIZE_TRACK_FAILED",
-        chat_id=chat_id,
-        user_id=user_id,
-        stack_trace=traceback.format_exc(),
-        link=link
-      ))
 
 async def _instagram_handle_collection_item_download(context: Context, chat_id: int, user_id: int, info_id: str, index: int):
   processing_message = await context.bot.send_message(chat_id, context.l("request.processing_text"))

@@ -21,3 +21,5 @@ REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
 REDIS_MAX_CONNECTIONS = int(os.environ.get("REDIS_MAX_CONNECTIONS", 100))
 
 TELEGRAM_PATH = str(os.environ.get("TELEGRAM_PATH", ""))
+
+CENTRAL_BOT_API = str(os.environ.get("CENTRAL_BOT_API", ""))

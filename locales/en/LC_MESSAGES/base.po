@@ -21,3 +21,8 @@ msgstr "Please join the group/channel below in order to continue"
 
 msgid "required_join.default_button_text"
 msgstr "Join"
+
+msgid "request.pending"
+msgstr "⏳ Your previous request is still being processed, please wait until it finishes."
+
+

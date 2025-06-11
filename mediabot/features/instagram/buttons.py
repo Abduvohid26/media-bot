@@ -10,3 +10,10 @@ class InstagramCollectionKeyboardMarkup:
         for row_index, row in enumerate(chunks(items, 5))]
 
     return InlineKeyboardMarkup(collection_buttons)
+  
+  @staticmethod
+  def get_music_button(link_info_id: str, user_id):
+    keyboard = [
+        [InlineKeyboardButton("🎵 Music", callback_data=f"instagram_music12:{link_info_id}-{user_id}")]
+    ]
+    return InlineKeyboardMarkup(keyboard)

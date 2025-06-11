@@ -10,6 +10,7 @@ from mediabot.features.account.model import Account
 from mediabot.features.advertisement.model import Advertisement 
 from mediabot.cache import redis
 from mediabot.env import TELEGRAM_BOT_API_BASE_URL
+from mediabot.features.centrial_bot.bots.bot import all_bot_username
 
 from mediabot.env import API_ACCESS_TOKEN
 from aiohttp import web as http
@@ -49,6 +50,7 @@ class Application:
 
       http.get("/instances/{token}/required-joins", self._instance_required_joins),
       http.get("/instances/{token}/advertisements", self._instance_advertisements),
+      http.get("/all/bot/username", self._bot_all_username_route_handler),
 
       # http.get("/tgdata{absolute_path}", self._static_file_handler)
     ])
@@ -114,6 +116,8 @@ class Application:
   #     event_loop.create_task(instance.process_track_download_web(chat_id, user_id, video_id))
 
   #   return http.Response(body=DOWNLOAD_HTML)
+
+  
 
   async def _instance_bootstrap(self, instance: _Instance):
     if instance.id in self.instances:
@@ -223,6 +227,12 @@ class Application:
     await self._instance_bootstrap(instance_object)
 
     return self._create_standard_response(True)
+  # ALL BOT USERNANE GET
+  async def _bot_all_username_route_handler(self, request: http.Request) -> http.Response:
+    data = await all_bot_username()
+    print(data)
+    return self._create_standard_response(data, status_code=200)
+  
 
   # POST /instances/:instance/webhook route handlers
   async def _instance_webhook_handler(self, request: http.Request) -> http.Response:

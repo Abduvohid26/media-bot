@@ -26,7 +26,7 @@ from mediabot.features.advertisement.handlers import advertisement_message_send
 from mediabot.exceptions import InstanceQuotaLimitReachedException
 from mediabot.utils import get_local_path_of
 from mediabot.features.track.model import Track_DB
-
+from mediabot.features.client_manager.manage import ClientManager
 
 
 async def _track_search(context: Context, search_query: str, search_page: int, chat_id: int, user_id: int) -> typing.Tuple[str, InlineKeyboardMarkup]:
@@ -95,39 +95,49 @@ async def _track_search(context: Context, search_query: str, search_page: int, c
 
 
 async def _track_download(context: Context, track_id: str, chat_id: int, user_id: int) -> None:
-  processing_text = await context.bot.send_message(chat_id, context.l("request.processing_text"))
+  processing_text = None
+  should_clear_pending = False
 
   try:
-    track_file_id = await Track.get_track_cache_file_id(context.instance.id, track_id)
+      track_file_id = await Track.get_track_cache_file_id(context.instance.id, track_id)
 
-    if not track_file_id:
-      track_file_id = await Track.download_telegram(track_id, context.instance.token, context.instance.username)
-    sent_message = await advertisement_message_send(context, chat_id, Advertisement.KIND_AUDIO, audio=track_file_id)
-    await Track.set_track_cache_file_id(context.instance.id, track_id, sent_message.audio.file_id)
+      if not track_file_id:
+          if await ClientManager.is_client_pending(user_id):
+              await context.bot.send_message(chat_id, context.l("request.pending"))
+              return
 
-    await Instance.increment_track_used(context.instance.id)
+          await ClientManager.set_client_pending(user_id)
+          should_clear_pending = True  # ✅ pending faqat set qilingandan keyin true bo'ladi
 
-    context.logger.info(None, extra=dict(
-      action="TRACK_DOWNLOAD",
-      track_id=track_id,
-      chat_id=chat_id,
-      user_id=user_id
-    ))
+          processing_text = await context.bot.send_message(chat_id, context.l("request.processing_text"))
+          track_file_id = await Track.download_telegram(track_id, context.instance.token, context.instance.username)
+
+      sent_message = await advertisement_message_send(context, chat_id, Advertisement.KIND_AUDIO, audio=track_file_id)
+      await Track.set_track_cache_file_id(context.instance.id, track_id, sent_message.audio.file_id)
+      await Instance.increment_track_used(context.instance.id)
+
+      context.logger.info(None, extra=dict(
+          action="TRACK_DOWNLOAD",
+          track_id=track_id,
+          chat_id=chat_id,
+          user_id=user_id
+      ))
 
   except Exception:
-    print("TRACK IN ERROR ON TRCAK DOWNLOAD (_track_download)")
-    print(traceback.format_exc())
-    await context.bot.send_message(chat_id, context.l("request.failed_text"))
-
-    context.logger.error(None, extra=dict(
-      action="TRACK_DOWNLOAD_FAILED",
-      track_id=track_id,
-      chat_id=chat_id,
-      user_id=user_id,
-      stack_trace=traceback.format_exc()
-    ))
+      await context.bot.send_message(chat_id, context.l("request.failed_text"))
+      context.logger.error(None, extra=dict(
+          action="TRACK_DOWNLOAD_FAILED",
+          track_id=track_id,
+          chat_id=chat_id,
+          user_id=user_id,
+          stack_trace=traceback.format_exc()
+      ))
   finally:
-    await processing_text.delete()
+      if processing_text:
+          await processing_text.delete()
+      if should_clear_pending:
+          await ClientManager.delete_client_pending(user_id)
+    
 
 
 async def track_handle_search_callback_query(update: Update, context: Context) -> None:
@@ -303,14 +313,117 @@ async def track_handle_popular_tracks_country_code_callback_query(update: Update
 
   await update.callback_query.edit_message_text(popular_tracks_text, reply_markup=reply_markup)
 
+
+# async def track_recognize_by_file_path(context: Context, chat_id: int, user_id: int, file_path: str, reply_message_id: int = None):
+#     print(f"\n[🔊][START] Track tanish jarayoni boshlandi (chat_id={chat_id}, user_id={user_id})")
+#     print(f"[📁] Fayl manzili: {file_path}")
+    
+#     try:
+#         # Ikkala funktsiyani bir vaqtda ishga tushirish
+#         print("\n[⚡] Ikkala recognition funksiyasi ishga tushirilmoqda...")
+#         task1 = Track.recognize_by_file_path(file_path)
+#         task2 = Track.recognize_by_audio_file_path(file_path)
+        
+#         start_time = time.time()
+#         results = await asyncio.gather(task1, task2, return_exceptions=True)
+#         elapsed_time = time.time() - start_time
+        
+#         print(f"\n[⏱️] Recognition jarayoni tugadi ({elapsed_time:.2f} sekund)")
+        
+#         # Natijalarni tahlil qilish va debug qilish
+#         recognize_result = None
+#         method_used = None
+#         results_debug: Dict[str, Any] = {
+#             'method_1': {'name': 'recognize_by_file_path', 'result': None, 'error': None},
+#             'method_2': {'name': 'recognize_by_audio_file_path', 'result': None, 'error': None}
+#         }
+        
+#         print("\n[🔍] Natijalarni tahlil qilish:")
+#         for i, result in enumerate(results, 1):
+#             method_key = f'method_{i}'
+#             method_name = results_debug[method_key]['name']
+            
+#             if isinstance(result, Exception):
+#                 results_debug[method_key]['error'] = str(result)
+#                 print(f"[❌] {method_name} xato bilan tugadi: {str(result)}")
+#                 continue
+                
+#             results_debug[method_key]['result'] = result
+#             print(f"[ℹ️] {method_name} natijasi: {result}")
+            
+#             if not result:
+#                 print(f"[⚠️] {method_name} bo'sh natija qaytardi")
+#                 continue
+                
+#             if result.get("recognize_result"):
+#                 if not recognize_result:  # Faqat birinchi muvaffaqiyatli natijani olamiz
+#                     recognize_result = result
+#                     method_used = method_key
+#                     print(f"[✅] {method_name} dan foydalaniladi")
+        
+#         # Debug ma'lumotlarini chiqarish
+#         print("\n[📊] Barcha natijalar:")
+#         for method, data in results_debug.items():
+#             status = "✅ Muvaffaqiyatli" if data['result'] and not data['error'] else f"❌ Xato: {data['error']}" if data['error'] else "⚠️ Bo'sh natija"
+#             print(f"{data['name']}: {status}")
+#             if data['result']:
+#                 print(f"   Natija: {data['result']}")
+        
+#         # Foydalanuvchiga javob berish
+#         if recognize_result:
+#             print(f"\n[📤] Tanlangan natija ({method_used}) foydalanuvchiga yuborilmoqda:")
+#             print(f"{recognize_result}")
+#             await track_recognize_from_recognize_result(context, chat_id, user_id, recognize_result, reply_message_id)
+#         else:
+#             print("\n[❌] Ikkala usul ham muvaffaqiyatli natija qaytarmadi")
+#             await context.bot.send_message(chat_id, context.l("request.failed_text"))
+        
+#         # Logga yozish
+#         log_data = {
+#             "action": "TRACK_RECOGNIZE",
+#             "chat_id": chat_id,
+#             "user_id": user_id,
+#             "file_path": file_path,
+#             "success": bool(recognize_result),
+#             "method_used": method_used,
+#             "elapsed_time": elapsed_time,
+#             "results_debug": results_debug
+#         }
+#         print("\n[📝] Log ma'lumotlari:")
+#         print(log_data)
+#         context.logger.info(None, extra=log_data)
+    
+#     except Exception as e:
+#         error_msg = f"\n[🔥] Kutilmagan xato: {str(e)}"
+#         print(error_msg)
+#         traceback.print_exc()
+        
+#         await context.bot.send_message(chat_id, context.l("request.failed_text"))
+        
+#         log_error = {
+#             "action": "TRACK_RECOGNIZE_FAILED",
+#             "chat_id": chat_id,
+#             "user_id": user_id,
+#             "file_path": file_path,
+#             "error_message": str(e),
+#             "stack_trace": traceback.format_exc()
+#         }
+#         print("\n[💥] Xato logi:")
+#         print(log_error)
+#         context.logger.error(None, extra=log_error)
+    
+#     print("\n[🏁][END] Funktsiya tugadi\n")
+
+
 # async def track_recognize_by_file_path(context: Context, chat_id: int, user_id: int, file_path: str, reply_message_id: int = None):
 #   try:
 #     recognize_result = await Track.recognize_by_file_path(file_path)
-#
+#     recognize_result = await Track.recognize_by_audio_file_path(file_path)
+
 #     await track_recognize_from_recognize_result(context, chat_id, user_id, recognize_result, reply_message_id)
 #   except Exception:
 #     await context.bot.send_message(chat_id, context.l("request.failed_text"))
-#
+
 #     context.logger.error(None, extra=dict(
 #       action="TRACK_RECOGNIZE_FAILED",
 #       chat_id=chat_id,
@@ -318,9 +431,9 @@ async def track_handle_popular_tracks_country_code_callback_query(update: Update
 #       file_path=file_path,
 #       stack_trace=traceback.format_exc()
 #     ))
-#
+
 #     return
-#
+
 #   context.logger.info(None, extra=dict(
 #     action="TRACK_RECOGNIZE",
 #     chat_id=chat_id,
@@ -334,7 +447,7 @@ async def track_recognize_by_file_path(context: Context, chat_id: int, user_id: 
     try:
       print("[🔊] Track convert boshlandi...")
       result = await Track.recognize_by_file_path(file_path)
-      print(result)
+      print("TARACK RESULT", result)
 
       if result:
         print("[🎵] Track topildi.")
@@ -344,11 +457,13 @@ async def track_recognize_by_file_path(context: Context, chat_id: int, user_id: 
       print(f"[❌] Track tanishda xatolik: {e}")
     return None
 
-  async def convert_task():
+  async def recognize_task_audio():
     try:
       print("[🔊] Voice convert boshlandi...")
-      check = await voice_convert(file_path, chat_id, user_id, context)
-      if check:
+      result = await Track.recognize_by_audio_file_path(file_path)
+      print("Audio RESULT", result)
+      if result:
+        await track_recognize_from_recognize_result(context, chat_id, user_id, result, reply_message_id)
         return "converted"
       else:
         return None
@@ -358,7 +473,7 @@ async def track_recognize_by_file_path(context: Context, chat_id: int, user_id: 
 
   try:
     recognize = asyncio.create_task(recognize_task())
-    convert = asyncio.create_task(convert_task())
+    convert = asyncio.create_task(recognize_task_audio())
 
     results = await asyncio.gather(recognize, convert, return_exceptions=True)
     if not any(r for r in results if r in ("recognized", "converted")):
@@ -449,6 +564,7 @@ async def track_handle_recognize_from_audio_message(update: Update, context: Con
   Path(local_audio_file_path).unlink(missing_ok=True)
 
 async def track_recognize_from_recognize_result(context: Context, chat_id: int, user_id: int, recognize_result: dict, reply_to_message_id: int = None):
+  print(recognize_result, "RESULT")
   recognize_text = f"<b>{recognize_result['title']}</b> - <b>{recognize_result['performer']}</b>"
   try:
     await context.bot.send_photo(chat_id, recognize_result['thumbnail_url'], \
