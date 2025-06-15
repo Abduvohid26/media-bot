@@ -184,11 +184,16 @@ class Track:
   @staticmethod
   async def recognize_by_file_path(file_path):
     data = {"file": open(file_path, "rb")}
+    print(data, "data")
 
-    async with aiohttp.ClientSession() as http_session:
-      async with http_session.post(urljoin(MEDIA_SERVICE_BASE_URL, "/track-recognize-by-file"), data=data) as http_response:
-        json_response = await http_response.json()
-        return json_response["recognize_result"]
+    try:
+       async with aiohttp.ClientSession() as http_session:
+        async with http_session.post(urljoin(MEDIA_SERVICE_BASE_URL, "/track-recognize-by-file"), data=data) as http_response:
+          json_response = await http_response.json()
+          return json_response["recognize_result"]
+    except Exception as e:
+      print(e)
+      return None
       
   @staticmethod
   async def recognize_by_audio_file_path(file_path):

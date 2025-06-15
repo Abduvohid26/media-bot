@@ -9,7 +9,7 @@ class TikTok:
     async with aiohttp.ClientSession(MEDIA_SERVICE_BASE_URL, raise_for_status=True, timeout=aiohttp.ClientTimeout(64)) as http_session:
       async with http_session.get("/tiktok-download-telegram", params=params) as http_response:
         json_response = await http_response.json()
-        return json_response["file_id"]
+        return json_response["file_id"], json_response["download_url"]
 
   @staticmethod
   async def set_tiktok_cache_file_id(instance_id: int, link: str, file_id: str):

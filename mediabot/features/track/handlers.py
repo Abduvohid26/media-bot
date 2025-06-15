@@ -564,7 +564,6 @@ async def track_handle_recognize_from_audio_message(update: Update, context: Con
   Path(local_audio_file_path).unlink(missing_ok=True)
 
 async def track_recognize_from_recognize_result(context: Context, chat_id: int, user_id: int, recognize_result: dict, reply_to_message_id: int = None):
-  print(recognize_result, "RESULT")
   recognize_text = f"<b>{recognize_result['title']}</b> - <b>{recognize_result['performer']}</b>"
   try:
     await context.bot.send_photo(chat_id, recognize_result['thumbnail_url'], \

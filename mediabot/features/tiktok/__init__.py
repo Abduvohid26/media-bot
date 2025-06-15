@@ -14,7 +14,7 @@
 
 from telegram.ext import filters, Application, MessageHandler, CallbackQueryHandler
 
-from mediabot.features.tiktok.handlers import tiktok_handle_download_callback_query, tiktok_handle_link_message
+from mediabot.features.tiktok.handlers import tiktok_handle_download_callback_query, tiktok_handle_link_message, tiktok_handle_music_button
 
 class TikTokFeature:
   tiktok_link_message_handler = MessageHandler(
@@ -26,7 +26,13 @@ class TikTokFeature:
       tiktok_handle_download_callback_query, "^tiktok_download_([0-9]+)_(.+)$"
   )
 
+  tiktok_music_handler = CallbackQueryHandler(
+    pattern=r"^tiktok_music12:",
+    callback=tiktok_handle_music_button
+  )
+
   @staticmethod
   def register_handlers(botapp: Application):
     botapp.add_handler(TikTokFeature.tiktok_link_message_handler)
     botapp.add_handler(TikTokFeature.tiktok_download_callback_query_handler)
+    botapp.add_handler(TikTokFeature.tiktok_music_handler)
